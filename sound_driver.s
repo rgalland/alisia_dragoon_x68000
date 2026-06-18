@@ -252,96 +252,391 @@ midi_noise_map:
 ; =============================================================================
 
 ; [B] Common fields
-CH_CONFIG           equ $00     ; channel configuration byte
+; =============================================================================
+; Channel block field offsets
+;
+; IMPORTANT — there are TWO DIFFERENT channel block layouts, just like the
+; original Z80 driver had two different ix bases:
+;   MUSIC channels   — Z80 base MUSIC_CH_BASE ($11AA), 9 channels, 54 bytes each
+;   INSTRUMENT channels — Z80 base INST_CH_BASE ($111A), 4 channels, 36 bytes each
+;
+; Many offsets are shared between the two (same meaning, same position) up
+; to around ix+$1A. From ix+$1B onward the SAME OFFSET NUMBER means something
+; COMPLETELY DIFFERENT depending on which block type a4 currently points to
+; — this mirrors the Z80 original exactly, where ix+$1b in a MUSIC_CH_BASE
+; block is the active preset pointer, but ix+$1b in an INST_CH_BASE block is
+; the channel status byte. There is no way to make these offsets unique
+; without diverging from the Z80 layout entirely, so instead every constant
+; below is prefixed MUSIC_/INST_ once its meaning diverges, and a comment
+; states the original "ix+$xx" offset it corresponds to in the Z80 source.
+;
+; All-CAPS [M]/[I]/[B] tags at the end of each line mean:
+;   [B] = Both block types, same offset, same meaning (Both/shared field)
+;   [M] = MUSIC channel block ONLY (offset reused for something else in I)
+;   [I] = INSTRUMENT channel block ONLY (offset reused for something else in M)
+;
+; A second, separate group of constants below (clearly marked) defines the
+; ALIGNED 32-BIT POINTER FIELDS added for this 68k port. These do not exist
+; in the Z80 source at all — the Z80 stored every pointer as a 16-bit byte
+; pair (lo/hi) at whatever odd-or-even offset fell out of the struct layout,
+; which the Z80 CPU has no problem with. The 68000 requires word/longword
+; accesses to be at EVEN addresses; several of the original byte-pair
+; offsets (ix+$0B, ix+$0D, ix+$14) are ODD, so a naive move.l to those
+; offsets raises a 68000 address error exception (vector 3) and crashes
+; immediately. Each new aligned field's comment states exactly which
+; original byte-pair field(s) it replaces for all longword access.
+; =============================================================================
+
+; -----------------------------------------------------------------------
+; [B] BOTH block types — same offset, same meaning, ix+$00 through ix+$0A
+; -----------------------------------------------------------------------
+CH_CONFIG           equ $00     ; [B] ix+$00 — channel configuration byte
                                 ;   bit 5   : 1=MIDI/PSG 0=FM
                                 ;   bits 2-0: channel number
                                 ;     FM: 0-5 (linear, no YM2612 port gap)
                                 ;     MIDI: 0-2 (PSG channel index)
-CH_DISABLE          equ $01     ; disable flag: non-zero suppresses hw writes
-                                ; equivalent of ix+$01 in Z80 driver
-                                ; set during channel init, cleared when ready
-CH_FREQ_LO          equ $02     ; frequency low byte
+CH_DISABLE          equ $01     ; [B] ix+$01 — disable flag: non-zero
+                                ; suppresses hw writes. Set during channel
+                                ; init, cleared when ready.
+CH_FREQ_LO          equ $02     ; [B] ix+$02 — frequency low byte
                                 ;   FM: OPM KeyCode (octave<<4 | note_nibble)
                                 ;   MIDI: MIDI note number (0-127)
-CH_FREQ_HI          equ $03     ; frequency high byte
+CH_FREQ_HI          equ $03     ; [B] ix+$03 — frequency high byte
                                 ;   FM: OPM KeyFraction (bits 7-2, 6 bits)
                                 ;   MIDI: unused
-CH_VIB_DELTA_LO     equ $04     ; vibrato frequency delta low
-CH_VIB_DELTA_HI     equ $05     ; vibrato frequency delta high
-CH_VIB_ACCUM        equ $06     ; vibrato accumulator (init $80)
-CH_FINETUNE         equ $07     ; fine-tune signed offset (ix+$07)
-CH_VOLUME           equ $08     ; channel volume / TL base value (ix+$08)
+CH_VIB_DELTA_LO     equ $04     ; [B] ix+$04 — vibrato frequency delta low
+CH_VIB_DELTA_HI     equ $05     ; [B] ix+$05 — vibrato frequency delta high
+CH_VIB_ACCUM        equ $06     ; [B] ix+$06 — vibrato accumulator (init $80)
+CH_FINETUNE         equ $07     ; [B] ix+$07 — fine-tune signed offset
+CH_VOLUME           equ $08     ; [B] ix+$08 — channel volume / TL base value
                                 ;   FM: OPM TL style 0=loud $7F=silent
                                 ;   MIDI: inverted for velocity
-CH_OCTAVE           equ $09     ; current octave 0-7 (ix+$09)
-CH_PSG_MASK         equ $0A     ; PSG mixer mask (ix+$0a)
+CH_OCTAVE           equ $09     ; [B] ix+$09 — current octave 0-7
+CH_PSG_MASK         equ $0A     ; [B] ix+$0A — PSG mixer mask
                                 ;   FM: operator carrier mask index
                                 ;   MIDI: unused
-CH_PTR_LO           equ $0B     ; track/instrument data pointer low  (ix+$0b)
-CH_PTR_HI           equ $0C     ; track/instrument data pointer high (ix+$0c)
-CH_LOOP_LO          equ $0D     ; loop pointer low  (ix+$0d)
-CH_LOOP_HI          equ $0E     ; loop pointer high (ix+$0e)
-; $0F-$13 reserved / unused in our port
-CH_INST_PTR_LO      equ $14     ; instrument table pointer low  (ix+$14) [B]
-CH_INST_PTR_HI      equ $15     ; instrument table pointer high (ix+$15) [B]
-; $16 unused
-CH_FLAGS            equ $17     ; channel flags byte (ix+$17) [M]
+
+; -----------------------------------------------------------------------
+; [B] BOTH block types, ix+$0B through ix+$0E — ORIGINAL byte-pair pointer
+; fields. DO NOT use move.w/move.l on these four — ix+$0B and ix+$0D are
+; ODD offsets and will raise a 68000 address error. Byte-only access
+; (move.b) remains safe and is occasionally still used for sub-fields
+; that are genuinely single bytes elsewhere in the file. For full 32-bit
+; pointer access use CH_STREAM_PTR / CH_LOOP_PTR (music) or
+; INST_STREAM_PTR (instrument) instead — see the aligned-fields section
+; further down.
+; -----------------------------------------------------------------------
+CH_PTR_LO           equ $0B     ; [B] ix+$0B — stream data ptr low (DO NOT
+                                ; move.l/move.w here — odd offset)
+CH_PTR_HI           equ $0C     ; [B] ix+$0C — stream data ptr high
+CH_LOOP_LO          equ $0D     ; [B] ix+$0D — loop ptr low (DO NOT
+                                ; move.l/move.w here — odd offset)
+CH_LOOP_HI          equ $0E     ; [B] ix+$0E — loop ptr high
+
+; -----------------------------------------------------------------------
+; [M] MUSIC channel block ONLY — ix+$0F through ix+$16
+; (these offsets are simply unused/reserved in the INSTRUMENT block)
+; -----------------------------------------------------------------------
+; ix+$0F-$13 PREVIOUSLY assumed reserved/unused in this port — see
+; CONFLICT note below, this assumption is now contradicted.
+CH_INST_PTR         equ $10     ; [M] ix+$10 (4 bytes, $10-$13) — resolved
+                                ; FM preset/instrument data pointer used by
+                                ; the $F0 extended command family
+                                ; (.ecmd_F0_l0b63h / ecmd_r_15h_16h).
+                                ; NOTE: this is a NEW 68k-port longword
+                                ; field, not a direct port of a Z80 byte
+                                ; pair — see aligned-fields section below
+                                ; for why ($10-$13 was free, unaligned-safe
+                                ; space in the music block).
+                                ;
+                                ; *** CONFLICT, NOT YET RESOLVED ***
+                                ; l0baeh (Z80) confirms ix+$11 through
+                                ; ix+$14 is an ACTIVE, WRITTEN-TO 4-byte
+                                ; per-channel array (selected by a 2-bit
+                                ; index via self-modifying code), directly
+                                ; overlapping 3 of these 4 bytes plus
+                                ; CH_INST_PTR_LO below. Either CH_INST_PTR
+                                ; isn't really 4 contiguous free bytes at
+                                ; $10-$13, or this array needs to live
+                                ; somewhere else in the 68k port's channel
+                                ; block. Needs reconciling against the
+                                ; actual call sites of l0baeh/l0bbeh/
+                                ; l0bd8h/l0bf2h/l0c0fh/l0c18h (the routines
+                                ; that read/write this 4-byte array) before
+                                ; trusting either layout.
+CH_INST_PTR_LO      equ $14     ; [M] ix+$14 — instrument table ptr low
+                                ; (byte-only access — ix+$14 is even but
+                                ; paired with ix+$15 below which is odd)
+                                ; *** Also CONFLICTS with l0baeh's array,
+                                ; which extends through ix+$14 — see above.
+CH_INST_PTR_HI      equ $15     ; [M] ix+$15 — instrument table ptr high
+                                ; (ODD offset — byte-only, never move.w)
+                                ; *** l0b63h (Z80) writes its computed
+                                ; pointer to ix+$15/ix+$16, not ix+$14/$15
+                                ; as this name implies — confirm whether
+                                ; CH_INST_PTR_LO/HI should actually be at
+                                ; $15/$16 instead of $14/$15.
+
+; Per-channel 4-byte counter/index array, confirmed by l0baeh's
+; self-modifying-code pattern (top bits of a parameter select 0-3,
+; "add a,$11" then patches that index into a literal "ld (ix+$11),c").
+; Read/written by l0baeh, l0bbeh, l0bd8h, l0bf2h, l0c0fh, l0c18h.
+; UNRESOLVED: this range overlaps CH_INST_PTR ($10-$13) and
+; CH_INST_PTR_LO ($14) above — see the CONFLICT notes there. Until
+; that's reconciled, do not rely on CH_INST_PTR's 4 bytes being free
+; for any other purpose, and do not rely on this array's 4 bytes being
+; free either. The four individual slots, if accessed directly rather
+; than through the self-modifying-code index trick, would be:
+CH_COUNTER_SLOT0    equ $11     ; [M] ix+$11 — counter/index array slot 0
+CH_COUNTER_SLOT1    equ $12     ; [M] ix+$12 — counter/index array slot 1
+CH_COUNTER_SLOT2    equ $13     ; [M] ix+$13 — counter/index array slot 2
+CH_COUNTER_SLOT3    equ $14     ; [M] ix+$14 — counter/index array slot 3
+CH_COUNTER_BASE     equ $11     ; [M] base offset for indexed access:
+                                ; (CH_COUNTER_BASE,a4,dN.w) with dN = 0-3
+; ix+$16 unused in the music channel block
+
+; -----------------------------------------------------------------------
+; [I] INSTRUMENT channel block ONLY — ix+$0F through ix+$1A. Confirmed
+; by direct instruction trace of l0f45h (vibrato pitch-update routine,
+; installed as a fake return address by sub_0dbeh so it runs after
+; every instrument command handler), L0e62h ($X6 "load vibrato" command
+; handler), and the L0e02h-L0eaeh command family in general.
+;
+; This range was PREVIOUSLY UNDOCUMENTED (treated as reserved/unused)
+; and is unrelated to CH_INST_PTR/CH_INST_PTR_LO/CH_INST_PTR_HI above —
+; those names describe MUSIC-block fields; in the INSTRUMENT block,
+; $0F-$1A is exclusively vibrato calculation scratch space and the
+; 5-byte vibrato parameter block, confirmed as follows:
+;   - ix+$0F-$13: scratch/working values computed FRESH each tick by
+;     l0f45h's own multiply+double sequence (sub_0b4ah) — NOT read from
+;     anywhere as input, purely transient output. Do not assume these
+;     persist meaningfully between ticks.
+;   - ix+$15-$19: the 5-byte vibrato parameter block written wholesale
+;     by L0e62h ("$X6 load vibrato — copy 5 bytes to ix+$15") and read
+;     back individually by l0f45h as depth/rate parameters.
+;   - ix+$1A: vibrato sub-counter, decremented each tick by l0f45h.
+; -----------------------------------------------------------------------
+INST_VIB_CALC_0F    equ $0F     ; [I] vibrato calc scratch — exact role
+                                ; still loose; confirmed only as written
+                                ; by l0f45h's multiply+double sequence
+INST_VIB_RESULT_LO  equ $10     ; [I] vibrato calc result low byte
+INST_VIB_RESULT_HI  equ $11     ; [I] vibrato calc result high byte
+INST_VIB_RESULT2_LO equ $12     ; [I] second vibrato calc result low byte
+INST_VIB_RESULT2_HI equ $13     ; [I] second vibrato calc result high byte
+INST_VIB_INPUT_E    equ $14     ; [I] vibrato calc multiplier input (the
+                                ; "ld e,(ix+$14)" feeding sub_0b4ah,
+                                ; multiplied together with byte at $15)
+INST_VIB_PARAMS     equ $15     ; [I] vibrato parameters, 5 bytes
+                                ; ($15-$19): $16=multiplier (read at
+                                ; l0f45h's "ld h,(ix+$16)"), $17/$18=
+                                ; rate selectors, $19=depth/sign (bit 7
+                                ; = sign, bits 0-6 = magnitude)
+INST_VIB_SUBCOUNTER equ $1A     ; [I] vibrato sub-counter, decremented
+                                ; each tick by l0f45h
+                                ;
+                                ; *** CORRECTION: an earlier pass of this
+                                ; table called ix+$14/$15 "instrument
+                                ; table pointer low/high" (now
+                                ; CH_INST_PTR_LO/HI) for the MUSIC block.
+                                ; That name does not apply here — in the
+                                ; INSTRUMENT block these same offset
+                                ; numbers are vibrato data, confirmed by
+                                ; L0e62h's own comment and by l0f45h
+                                ; reading individual bytes as vibrato
+                                ; depth/rate, not as a 16-bit address.
+
+; -----------------------------------------------------------------------
+; [B] BOTH block types, ix+$17 through ix+$1A — same offset, same meaning
+; *** UNCONFIRMED FOR INSTRUMENT BLOCK *** — the instrument-block trace
+; above found ix+$17/$19/$1A used for vibrato calc/sub-counter purposes
+; instead, with NO confirmed "channel flags"/"envelope flags"/
+; "portamento threshold" meaning in that context. These three constants
+; should likely be re-tagged [M]-only rather than [B] — left as [B] for
+; now since no MUSIC-block call site was re-traced in this pass to
+; confirm the [M] side is still accurate, but flagging the inconsistency.
+; -----------------------------------------------------------------------
+CH_FLAGS            equ $17     ; [B?] ix+$17 — channel flags byte
                                 ;   bit 0: channel inactive (1=skip)
                                 ;   bit 1: portamento active
                                 ;   bit 3: arpeggio active
                                 ;   bit 5: effects active
                                 ;   bit 6: vibrato enable
-CH_DURATION         equ $18     ; note duration counter (ix+$18) [M]
-CH_ENV_FLAGS        equ $19     ; envelope/effect flags (ix+$19) [M]
+CH_DURATION         equ $18     ; [B?] ix+$18 — note duration counter
+CH_ENV_FLAGS        equ $19     ; [B?] ix+$19 — envelope/effect flags
                                 ;   bit 0: note currently playing
                                 ;   bit 4: sustain/legato active
                                 ;   bit 5: retrigger suppress
                                 ;   bits 7-6: LFO depth
-CH_PORT_THRESH      equ $1A     ; portamento threshold (ix+$1a) [M]
+CH_PORT_THRESH      equ $1A     ; [B?] ix+$1A — portamento threshold
 
-; --- Fields $1B-$1C differ between channel types ---
-; Music channel ($11AA base): preset pointer
-MUSIC_PRESET_LO     equ $1B     ; active preset data pointer low  (ix+$1b) [M]
-MUSIC_PRESET_HI     equ $1C     ; active preset data pointer high (ix+$1c) [M]
-; Instrument channel ($111A base): status flags
-INST_STATUS         equ $1B     ; instrument channel status (ix+$1b) [I]
+; -----------------------------------------------------------------------
+; DIVERGENCE POINT — from ix+$1B onward, MUSIC and INSTRUMENT blocks use
+; the SAME offset numbers for COMPLETELY DIFFERENT fields. From here on,
+; always check which block type a4 points to before reading the comments.
+; -----------------------------------------------------------------------
+
+; [M] MUSIC channel block — ix+$1B-$1C
+MUSIC_PRESET_LO     equ $1B     ; [M] ix+$1B — active preset data ptr low
+MUSIC_PRESET_HI     equ $1C     ; [M] ix+$1C — active preset data ptr high
+
+; [I] INSTRUMENT channel block — SAME offsets $1B-$1C, different meaning
+INST_STATUS         equ $1B     ; [I] ix+$1B — instrument channel status
                                 ;   bit 0: channel active
                                 ;   bit 1: vibrato enable
                                 ;   bits 7-6: panning bits
-INST_DURATION       equ $1C     ; instrument duration counter (ix+$1c) [I]
+INST_DURATION       equ $1C     ; [I] ix+$1C — instrument duration counter
 
-; [B] Common from $1D onward
-CH_NOTE_REG         equ $1D     ; note register / vibrato base (ix+$1d)
-CH_ARP_S1_LO        equ $1E     ; arpeggio step 1 low [M] / unused [I]
-INST_STEP_RATE      equ $1F     ; fractional step rate (ix+$1f) [I]
-CH_ARP_S1_HI        equ $1F     ; arpeggio step 1 high [M]
-INST_CH_INDEX       equ $20     ; channel index for address calculation [I]
-CH_ARP_S2_LO        equ $20     ; arpeggio step 2 low [M]
-INST_PREV_DUR       equ $21     ; previous duration value [I]
-CH_ARP_S2_HI        equ $21     ; arpeggio step 2 high [M]
-INST_FRAC_ACCUM     equ $22     ; fractional accumulator (ix+$22) [I]
-CH_FREQ_BYTE        equ $22     ; frequency table byte [M]
-INST_PRIORITY       equ $23     ; channel priority (ix+$23) [I]
-CH_VIB_PARAMS       equ $23     ; vibrato parameters 6 bytes $23-$28 [M]
-; Music channel only ($24 bytes and above)
-CH_ARP_BASE         equ $2A     ; arpeggio base value 5 bytes $2A-$2E
-CH_VIB_DEPTH        equ $2B     ; vibrato depth parameter
-CH_ARP_INTERVAL     equ $2C     ; arpeggio interval
-CH_ARP_CTR_INIT     equ $2D     ; arpeggio counter initialiser
-CH_PAN_FLAGS        equ $2E     ; panning + vibrato direction flags
+; -----------------------------------------------------------------------
+; [B] BOTH block types — ix+$1D only
+; -----------------------------------------------------------------------
+CH_NOTE_REG         equ $1D     ; [B] ix+$1D — note register / vibrato base
+
+; -----------------------------------------------------------------------
+; Second divergence point — ix+$1E through ix+$23, again same offsets,
+; different meaning depending on block type.
+; -----------------------------------------------------------------------
+
+; [M] MUSIC channel block — ix+$1E-$23 (arpeggio step storage)
+;
+; *** DISCREPANCY FOUND, NOT YET RESOLVED ***
+; The verified Z80 source (ad_md_sound_driver.s) has its own explicit
+; layout comment for this exact block, immediately preceding "org
+; $11aa", which disagrees with the names/offsets below: it lists
+; ix+$1E as "arpeggio step 1 HIGH" (no separate step-1-LOW field), then
+; shifts every subsequent field by one position relative to what's
+; defined here, AND shows the vibrato parameter block as 5 bytes
+; ($22-$26) rather than 6 ($23-$28) — meaning this isn't a simple
+; uniform shift, the field BOUNDARIES differ too. None of these names
+; are referenced by more than a handful of call sites in this file
+; (CH_ARP_S1_LO, CH_ARP_S2_LO, CH_FREQ_BYTE, CH_VIB_PARAMS, CH_ARP_BASE,
+; CH_ARP_CTR_INIT, CH_ARP_COUNTER, CH_PORT_SPEED, CH_PORT_TARGET,
+; CH_LFO_DEPTH, CH_MIDI_MIXER, CH_MIDI_SPEED — see grep results), and
+; at least one call site's own inline comment already contradicts this
+; table independently (CH_PORT_TARGET's user at line ~3306 comments
+; "ix+$1e", but CH_PORT_TARGET is defined at $31 here) — meaning there
+; was pre-existing inconsistency even before this verified source was
+; available to check against. Renaming this whole region needs each
+; call site re-traced against its own Z80 routine individually before
+; changing the offsets, NOT a mechanical shift — left unchanged here to
+; avoid silently breaking currently-working code on an unverified
+; assumption, exactly the mistake this reconciliation pass is trying to
+; avoid repeating.
+CH_ARP_S1_LO        equ $1E     ; [M] ix+$1E — arpeggio step 1 low
+CH_ARP_S1_HI        equ $1F     ; [M] ix+$1F — arpeggio step 1 high
+CH_ARP_S2_LO        equ $20     ; [M] ix+$20 — arpeggio step 2 low
+CH_ARP_S2_HI        equ $21     ; [M] ix+$21 — arpeggio step 2 high
+CH_FREQ_BYTE        equ $22     ; [M] ix+$22 — frequency table byte
+CH_VIB_PARAMS       equ $23     ; [M] ix+$23 — vibrato parameters, 6 bytes
+                                ; ($23-$28 inclusive)
+
+; [I] INSTRUMENT channel block — SAME offsets $1F-$23, different meaning
+INST_STEP_RATE      equ $1F     ; [I] ix+$1F — fractional step rate
+INST_CH_INDEX       equ $20     ; [I] ix+$20 — channel index for address calc
+INST_PREV_DUR       equ $21     ; [I] ix+$21 — previous duration value
+INST_FRAC_ACCUM     equ $22     ; [I] ix+$22 — fractional accumulator
+INST_PRIORITY       equ $23     ; [I] ix+$23 — channel priority
+                                ; (this is the LAST byte used in the
+                                ; original 36-byte instrument block —
+                                ; everything from here down is [M]-only)
+
+; -----------------------------------------------------------------------
+; [M] MUSIC channel block ONLY from here on — ix+$24 and above. The
+; instrument block's original Z80 layout ends at ix+$23 (36 bytes total,
+; INST_CH_BASE..INST_CH_BASE+$23), so none of these offset numbers have
+; any instrument-block meaning to collide with.
+; -----------------------------------------------------------------------
+CH_ARP_BASE         equ $2A     ; [M] ix+$2A — arpeggio base value, 5 bytes
+                                ; ($2A-$2E inclusive)
+CH_VIB_DEPTH        equ $2B     ; [M] ix+$2B — vibrato depth parameter
+CH_ARP_INTERVAL     equ $2C     ; [M] ix+$2C — arpeggio interval
+CH_ARP_CTR_INIT     equ $2D     ; [M] ix+$2D — arpeggio counter initialiser
+CH_PAN_FLAGS        equ $2E     ; [M] ix+$2E — panning + vibrato direction
                                 ;   bit 6: vibrato direction
                                 ;   bit 7: vibrato invert
-CH_ARP_COUNTER      equ $2F     ; arpeggio counter
-CH_PORT_SPEED       equ $30     ; portamento speed
-CH_PORT_TARGET      equ $31     ; portamento target
-CH_PORT_BASE        equ $32     ; portamento base (copy of speed)
-CH_LFO_DEPTH        equ $33     ; LFO depth register cache
-CH_MIDI_MIXER       equ $34     ; MIDI pan / FM algorithm cache
-CH_MIDI_SPEED       equ $35     ; MIDI portamento speed
+CH_ARP_COUNTER      equ $2F     ; [M] ix+$2F — arpeggio counter
+CH_PORT_SPEED       equ $30     ; [M] ix+$30 — portamento speed
+CH_PORT_TARGET      equ $31     ; [M] ix+$31 — portamento target
+CH_PORT_BASE        equ $32     ; [M] ix+$32 — portamento base (copy of speed)
+CH_LFO_DEPTH        equ $33     ; [M] ix+$33 — LFO depth register cache
+CH_MIDI_MIXER       equ $34     ; [M] ix+$34 — MIDI pan / FM algorithm cache
+CH_MIDI_SPEED       equ $35     ; [M] ix+$35 — MIDI portamento speed
+                                ; (last byte of the original 54-byte
+                                ; Z80 music channel block, ix+$00..ix+$35)
+
+
+; =============================================================================
+; ALIGNED 32-BIT POINTER FIELDS — 68k port additions, NOT in the Z80 source
+;
+; None of these have an "ix+$xx" equivalent because they don't exist in the
+; original driver at all. The Z80 stored every pointer as two separate
+; bytes (lo/hi) at whatever offset the struct layout produced, with no
+; alignment concerns. On the 68000, move.w/move.l to an odd address raises
+; an address error exception (vector 3) and crashes immediately — several
+; of the original byte-pair offsets above (ix+$0B, ix+$0D, ix+$14) are odd,
+; so every place that needs to load/store a FULL 32-bit RAM pointer (since
+; X68000 addresses don't fit in the Z80's original 16-bit pair) must use
+; one of these dedicated fields instead, placed at offsets divisible by 4.
+;
+; Each field below states exactly which original byte-pair field(s) it
+; replaces for longword access, and in which block type.
+; =============================================================================
+
+; --- [M] MUSIC channel block aligned fields ---
+; Replaces CH_PTR_LO/CH_PTR_HI ($0B/$0C) and CH_LOOP_LO/CH_LOOP_HI
+; ($0D/$0E) for all longword pointer access in MUSIC channel blocks.
+; Placed past the original 54-byte ($00-$35) Z80 layout, in space we
+; control, at offsets divisible by 4.
+CH_STREAM_PTR       equ $36     ; [M] NEW (no ix+ equivalent) — replaces
+                                ; CH_PTR_LO/HI (ix+$0B/$0C) for move.l.
+                                ; Track/instrument stream pointer.
+CH_LOOP_PTR         equ $3A     ; [M] NEW (no ix+ equivalent) — replaces
+                                ; CH_LOOP_LO/HI (ix+$0D/$0E) for move.l.
+                                ; Loop pointer.
+
+; --- [I] INSTRUMENT channel block aligned fields ---
+; Same odd-offset problem as above, but the instrument block is only 36
+; bytes ($00-$23) with every byte already used by a named [I] field
+; (INST_PRIORITY at $23 is the last one) — there is no spare aligned
+; space within the original layout at all, so the block itself must be
+; grown to fit each new field.
+INST_STREAM_PTR     equ $24     ; [I] NEW (no ix+ equivalent) — replaces
+                                ; CH_PTR_LO/HI (ix+$0B/$0C) for move.l,
+                                ; in the INSTRUMENT block context.
+                                ; Instrument stream pointer.
+INST_PATCH_PTR      equ $28     ; [I] NEW (no ix+ equivalent) — replaces
+                                ; CH_LOOP_LO/HI (ix+$0D/$0E) for move.l,
+                                ; in the INSTRUMENT block context. Used
+                                ; by .ic_load_patch/.ic_set_vol, which
+                                ; previously stored a full 32-bit RAM
+                                ; address via move.b/lsr.l#8/move.b —
+                                ; that didn't crash (single-byte moves
+                                ; have no alignment requirement) but it
+                                ; SILENTLY TRUNCATED the address to its
+                                ; low 16 bits, since X68000 RAM lives
+                                ; well above $FFFF. Resolved FM patch ptr.
 
 ; Channel block sizes
-MUSIC_CH_SIZE       equ $36     ; 54 bytes per music channel block
-INST_CH_SIZE        equ $24     ; 36 bytes per instrument channel block
+; MUSIC_CH_SIZE grown from the original $36 (54 bytes) to $3E (62 bytes)
+; to fit the two aligned pointer fields above ($36-$39 and $3A-$3D) — this
+; only affects the 68k port's RAM layout, not Z80 compatibility, since
+; nothing reads raw bytes across channel block boundaries.
+MUSIC_CH_SIZE       equ $3E     ; was $36 (original Z80 size) — +8 bytes
+INST_CH_SIZE        equ $2C     ; was $24 (original Z80 size), then grew
+                                ; to $28, then $2C — +4 bytes per aligned
+                                ; field added (INST_STREAM_PTR, then
+                                ; INST_PATCH_PTR)
+
+; Original Z80 instrument/FM-preset DATA FORMAT size — this is the size
+; of preset/patch entries as they exist in music.bin / sfx.bin, NOT the
+; size of our (enlarged) RAM channel block. These must stay independent:
+; INST_CH_SIZE has grown twice to fit alignment-safe pointer fields added
+; for the 68k port; FM_PRESET_ENTRY_SIZE describes external file data we
+; don't control and must never change. Two call sites previously used
+; INST_CH_SIZE for this by coincidence (both were 36 at the time), which
+; silently broke once INST_CH_SIZE grew — one read past the end of a
+; preset entry, the other overran a copy into the channel block and
+; clobbered the newly-added aligned pointer fields.
+FM_PRESET_ENTRY_SIZE equ 36
 
 ; Channel counts
 MUSIC_CH_COUNT      equ 9       ; total music channels (6 FM + 3 MIDI)
@@ -388,18 +683,38 @@ snd_duration_table_2:
 ; =============================================================================
 
 snd_init:
-    ; Install OPM timer B interrupt handler
+    ; Switch to supervisor mode for hardware register access
+    ; DOS _SUPER ($FF20): push 0 to enter supervisor mode
+    ; Returns old SSP in d0 (save for restore on exit)
+    ; Without this, reading/writing hardware registers at $E9xxxx
+    ; crashes with a bus error in Human68k user mode
+    DOS_SUPER
+    move.l  d0,(saved_ssp)     ; save old SSP
+
+    ; Install YM2151 timer interrupt handler
     ; Use DOS _INTVCS ($FF25) — correct way to set interrupt vectors
-    ; (works in both user and supervisor mode)
+    ; CRITICAL: the YM2151's timer A/B IRQ output is wired to the MFP's
+    ; dedicated "FM Audio source" line at vector $43 — NOT MFP Timer-A
+    ; ($4D) or Timer-B ($48), which are separate, never-started, internal
+    ; MFP timers. Installing on the wrong vector means write_opm works
+    ; fine (confirms hardware access/supervisor mode is correct) but the
+    ; interrupt never reaches snd_timer_irq, so irq_counter stays at zero.
     lea     snd_timer_irq,a0
-    move.l  a0,-(sp)            ; handler address (push first)
-    move.w  #VBLANK_VECTOR,-(sp) ; vector number $4D (push second)
-    DOS     _INTVCS                 ; DOS _INTVCS
+    move.l  a0,-(sp)              ; handler address (push first)
+    move.w  #FM_IRQ_VECTOR,-(sp)  ; vector number $43 (push second)
+    DOS     _INTVCS
     addq.l  #6,sp
     move.l  d0,(saved_vblank_vec) ; save old handler returned in d0
 
-    ; Initialise hardware
-    DOS_SUPER
+    ; Enable and unmask the FM Audio source interrupt at the MFP level.
+    ; Installing the vector alone is not enough — the MFP itself must
+    ; also be told to generate and pass through this interrupt.
+    ; FM Audio source = GPIP3 = bit 3 of Interrupt Enable/Mask register B
+    bset    #3,(MFP_IERB)       ; enable GPIP3 interrupt generation
+    bset    #3,(MFP_IMRB)       ; unmask GPIP3 so it reaches the CPU
+    bclr    #3,(MFP_ISRB)       ; clear any stale pending flag
+
+    ; Initialise hardware (now in supervisor mode — safe to access $E9xxxx)
     bsr     opm_init
     bsr     adpcm_init
     bsr     midi_init
@@ -831,14 +1146,6 @@ midi_init_channels:
 ; MIDI transmit routines
 ; =============================================================================
 
-; Send one byte (d0.b) to MIDI output
-send_midi_byte:
-.wait:
-    btst    #1,(MIDI_STATUS)
-    beq.b   .wait
-    move.b  d0,(MIDI_DATA)
-    rts
-
 ; Send block of bytes: a0=source, d7=count-1
 send_midi_block:
     move.b  (a0)+,d0
@@ -895,6 +1202,17 @@ midi_pitch_bend:
     lsr.w   #7,d0
     and.b   #$7F,d0             ; high 7 bits
     bsr     send_midi_byte
+    rts
+
+; Send one byte (d0.b) to MIDI output
+send_midi_byte:
+    tst.b   midi_present
+    beq.b   .no_midi_board
+.wait:
+    btst    #1,(MIDI_STATUS)
+    beq.b   .wait
+    move.b  d0,(MIDI_DATA)
+.no_midi_board:
     rts
 
 
@@ -996,7 +1314,7 @@ snd_assign_channels:
 ; Equivalent of Z80 main polling loop at l0123h
 ; =============================================================================
 
-snd_timer_irq:
+snd_timer_irq:  ; $0362a4
     movem.l d0-d7/a0-a6,-(sp)
 
     addq.l  #1,(irq_counter)    ; debug instrumentation (soundtest.s)
@@ -1006,8 +1324,9 @@ snd_timer_irq:
     move.b  #$2A,d1
     bsr     write_opm
 
-    ; Acknowledge MFP interrupt
-    bclr    #0,(MFP_ISRB)
+    ; Acknowledge MFP interrupt — FM Audio source is GPIP3 = bit 3 of ISRB
+    ; (vector $43 maps to interrupt control/status register B, bit 3)
+    bclr    #3,(MFP_ISRB)
 
     ; Check pause
     tst.b   (snd_pause)
@@ -1156,7 +1475,7 @@ snd_channel_tick:
     subq.b  #1,(CH_DURATION,a4)
     beq     snd_read_event      ; expired → read next event
 
-    ; --- Check portamento threshold (mirrors cp (ix+$18)) ---
+    ; --- Check portamento threshold (mirrors cp (ix+$1A)) ---
     move.b  (CH_PORT_THRESH,a4),d0
     cmp.b   (CH_DURATION,a4),d0
     bhi     .skip               ; above threshold
@@ -1181,14 +1500,11 @@ snd_channel_tick:
 ; =============================================================================
 
 snd_read_event:
-    ; Load 32-bit stream pointer from channel block
-    ; Stored as longword at CH_PTR_LO ($0B) — 4 bytes
-    move.l  (CH_PTR_LO,a4),a5      ; a5 = track stream pointer (full 32-bit)
-
+    ; Load 32-bit stream pointer from channel block (aligned field)
+    movea.l (CH_STREAM_PTR,a4),a5  ; a5 = track stream pointer (full 32-bit)
     move.b  (a5)+,d0            ; read event byte, advance pointer
-
     ; Dispatch by value range
-    tst.b   d0
+    ; tst.b   d0
     bpl     snd_note_event      ; bit 7=0 → note byte ($00-$7F)
 
     ; Command byte
@@ -1196,11 +1512,11 @@ snd_read_event:
     beq.b   .range_80_bf        ; bit6=0, bit7=1 → preset ($80-$BF)
 
     ; $C0-$FF range
-    cmp.b   #$D0,d0
+    cmp.b   #$d0,d0
     bcs.b   .range_c0_cf        ; $C0-$CF: relative volume
-    cmp.b   #$D8,d0
+    cmp.b   #$d8,d0
     bcs.b   .range_d0_d7        ; $D0-$D7: set octave
-    cmp.b   #$E0,d0
+    cmp.b   #$e0,d0
     bcs.b   .range_d8_df        ; $D8-$DF: portamento speed
     bra     snd_extended_cmd    ; $E0-$FF: extended commands
 
@@ -1232,7 +1548,7 @@ snd_read_event:
 ; =============================================================================
 
 snd_save_stream_ptr:
-    move.l  a5,(CH_PTR_LO,a4)  ; store full 32-bit pointer as longword
+    move.l  a5,(CH_STREAM_PTR,a4)  ; store full 32-bit pointer (aligned field)
     rts
 
 
@@ -1249,7 +1565,7 @@ snd_note_event:
 
     ; Check for sustain modifier ($E7 following this note)
     bclr    #4,(CH_ENV_FLAGS,a4)
-    cmp.b   #$E7,(a5)
+    cmp.b   #$e7,(a5)
     bne.b   .no_sustain
     bset    #4,(CH_ENV_FLAGS,a4)
 .no_sustain:
@@ -1532,8 +1848,11 @@ snd_key_on:
     bne     .kon_done
 
     btst    #5,(CH_CONFIG,a4)
-    bne     snd_midi_key_on
+    beq.b   .fm_key_on
+    bsr     snd_midi_key_on
+    rts
 
+.fm_key_on:
     ; --- OPM key-on ---
     move.b  (CH_CONFIG,a4),d0
     and.b   #$07,d0             ; channel 0-7
@@ -1569,7 +1888,7 @@ snd_midi_key_on:
     move.b  (CH_VOLUME,a4),d2
     not.b   d2                  ; invert
     lsr.b   #1,d2               ; scale $FF→$7F to $7F→$40 range
-    and.b   #$7F,d2
+    and.b   #$7f,d2
 
     ; Store note and send note-on
     move.b  (CH_FREQ_LO,a4),d1
@@ -1588,8 +1907,10 @@ snd_midi_key_on:
 
 snd_key_off:
     btst    #5,(CH_CONFIG,a4)
-    bne     snd_midi_key_off
-
+    beq.b   .fm_key_off
+    bsr     snd_midi_key_off
+    rts
+.fm_key_off:
     ; OPM key-off: write channel with no operator bits = all operators off
     move.b  (CH_CONFIG,a4),d0
     and.b   #$07,d0             ; channel only
@@ -1609,6 +1930,7 @@ snd_midi_key_off:
     bsr     midi_note_off
     clr.b   (a2,d0.w)
 .koff_done:
+    movem.l (SP)+,a2
     rts
 
 
@@ -2100,20 +2422,45 @@ snd_load_track:
     lea     (MUSIC_CH_SIZE,a0),a0
     dbf     d7,.restore_loop
 
-    ; Resolve track pointer from bank+track index
-    ; Formula: table_index = (bank * 16) + (track - 1)
     ; snd_track is 1-based (dec a in sub_0203h makes it base-0 for table lookup)
-    moveq   #0,d0
+    moveq   #$0,d0
     move.b  (snd_bank),d0
-    lsl.w   #4,d0               ; bank * 16 slots
+    swap    d0                   ; 64k banks
+    lsr.l   #1,d0                ; 32k banks which is correct
+    moveq   #0,d1
     move.b  (snd_track),d1
-    and.w   #$FF,d1
-    subq.w  #1,d1               ; base-0 (matches dec a in sub_0203h)
-    add.w   d1,d0
-    lsl.w   #2,d0               ; * 4 (longword pointer)
-    lea     (snd_track_table),a0
-    move.l  (a0,d0.w),a5        ; a5 = absolute track data address in RAM
-    move.l  a5,(snd_track_ptr)
+    subq.w  #1,d1                ; base-0 (matches dec a in sub_0203h)
+    add.w   d1,d1
+    add.l   d1,d0
+    lea     (snd_bank_base),a0   ; load music data base address pointer
+    movea.l (a0),a4              ; load music data base address
+    movea.l a4,a5                ; copy address to a5 to preserve a4 for now
+    adda.l  d0,a5                ; add track's offset-table-entry position
+    ; read header to find out where track data starts
+    moveq   #$0,d0
+    move.b  (a5)+,d0
+    move.b  (a5)+,d1
+    lsl.w   #8,d1
+    or.w    d1,d0                ; d0 = track offset within bank, read
+                                  ; from the bank's own offset table
+    movea.l a4,a5                ; a5 = bank base again
+    adda.w  d0,a5                ; a5 = bank base + track offset
+                                  ; = absolute track address
+    move.l  a5,(snd_track_ptr)   ; Z80: ld (l1398h),hl
+
+    ; --- a4 = a5 (track's own address) ---
+    ; Z80: push hl / pop iy (iy = track pointer), then ex de,hl
+    ; (de = track pointer too — hl and de both end up holding the same
+    ; track address at this point, with the old hl/de swapped out).
+    ; Neither register is reloaded with the bank base again anywhere
+    ; before the header-parsing loop runs, so de keeps meaning "track
+    ; pointer" for the rest of sub_0203h. Every header field that
+    ; follows — the LFO byte, the 9 channel stream offsets, the 4
+    ; preset table offsets — is read via return_hl_from_iy_plus_de,
+    ; which does "add hl,de": i.e. relative to the TRACK's own address,
+    ; not the bank base. a4 here plays the role of de; a5/iy walks
+    ; forward through the header bytes exactly like iy does in the Z80.
+    movea.l a5,a4                ; a4 = track address (Z80: de = iy)
 
     ; --- Parse track header (confirmed from sub_0203h) ---
     ; Track header layout (little-endian words in Z80 original,
@@ -2123,75 +2470,73 @@ snd_load_track:
     ; word 1-9: per-channel stream offsets (9 channels: 6 FM + 3 PSG/MIDI)
     ; word 10-13: FM preset table base addresses (4 entries → l139ah+1 area)
     ;
-    ; In Z80: offsets are bank-relative, added to $8000 (M68K_MEM_SPACE)
-    ; In X68000: snd_track_table already contains absolute pointers,
-    ; but the header words are still bank-relative offsets needing base added
+    ; In Z80: "ex de,hl" makes de hold the TRACK pointer (same as iy),
+    ; and return_hl_from_iy_plus_de adds de to each header word — so
+    ; these offsets are relative to the TRACK's own address, not the
+    ; bank base. The bank base ($8000/M68K_MEM_SPACE) is only used once,
+    ; earlier, to resolve the track pointer itself from the bank's own
+    ; offset table.
+    ; In X68000: header offsets are relative to a4 (= a5 = the track's
+    ; own resolved address, set immediately above to match de=iy).
 
     ; Word 0: LFO setting
     ; Z80: write (iy+$01) to YM2612 reg $22 (LFO enable/freq)
     ; X68000: map to OPM registers $18 (LFRQ) and $1B (CT/waveform)
-    move.w  (a5)+,d0            ; read LFO word (little-endian)
-    ; Low byte → OPM LFRQ ($18)
-    move.b  d0,d1
+    move.b  (a5)+,d2            ; first byte is always $02
+    ; second byte → OPM LFRQ ($18)
+    move.b  (a5)+,d1
     move.b  #OPM_LFRQ,d0
     bsr     write_opm
     ; High byte → OPM CT/waveform ($1B) if non-zero
-    lsr.w   #8,d0               ; get high byte
+    move.b  d2,d1               ; get first byte
     beq.b   .no_lfo_wave
-    move.b  d0,d1
     move.b  #OPM_CT_W,d0
     bsr     write_opm
 .no_lfo_wave:
 
     ; Words 1-9: per-channel stream pointers
-    ; Z80: each word is offset within bank, added to $8000
-    ; X68000: add to track base address (already resolved to RAM)
-    lea     (snd_music_ch),a4
-    move.l  (snd_track_ptr),a3  ; a3 = bank base for offset resolution
+    ; Z80: each word is offset from de (the TRACK pointer, via
+    ; return_hl_from_iy_plus_de), NOT from the bank base
+    ; X68000: add to a4, which equals a5/snd_track_ptr (the track's own
+    ; resolved address) — matches Z80 de=iy exactly. a3 below is just a
+    ; walking pointer through snd_music_ch, unrelated to this base.
+    lea     (snd_music_ch),a3
     moveq   #MUSIC_CH_COUNT-1,d7
 .ch_init:
     ; Read channel offset word (little-endian)
+    moveq   #0,d0
     move.b  (a5)+,d0            ; low byte
     move.b  (a5)+,d1            ; high byte
     lsl.w   #8,d1
-    or.w    d0,d1               ; d1 = offset
+    or.w    d0,d1               ; d1 = offset within bank (0-32767)
 
-    ; Resolve to absolute RAM address: bank_base + offset
-    move.l  a3,d0
-    ; Strip to bank base (mask to 32KB boundary)
-    and.l   #$FFFF8000,d0       ; align to bank start
-    and.l   #$00007FFF,d1       ; ensure offset is within bank
-    add.l   d1,d0               ; d0 = absolute channel data address
-
-    ; Store as full 32-bit longword pointer at CH_PTR_LO
-    move.l  d0,(CH_PTR_LO,a4)
-
+    ; Store as full 32-bit longword pointer (aligned field — CH_PTR_LO at
+    ; $0B is odd and would raise an address error on move.l)
+    movea.l a4,a6
+    adda.w  d1,a6
+    move.l  a6,(CH_STREAM_PTR,a3)
     ; Also set loop pointer to same address (sub_02c0h sets both equal)
-    move.l  d0,(CH_LOOP_LO,a4)
-
+    move.l  a6,(CH_LOOP_PTR,a3)
     ; Activate channel
-    bclr    #0,(CH_FLAGS,a4)
-    clr.b   (CH_DISABLE,a4)
-
-    lea     (MUSIC_CH_SIZE,a4),a4
+    clr.b   (CH_DISABLE,a3)
+    bclr    #0,(CH_FLAGS,a3)
+    lea     (MUSIC_CH_SIZE,a3),a3
     dbf     d7,.ch_init
 
     ; Words 10-13: FM preset table base addresses
     ; Z80: stored to l139ah+1 area (4 words = 8 bytes)
-    ; X68000: stored to snd_fm_preset_ptr (use first entry as main table)
-    ; Read 4 words, resolve addresses, store first as snd_fm_preset_ptr
+    ; X68000: 4 words stored to snd_preset_ptrs
     moveq   #3,d7
-    lea     (snd_fm_preset_ptr),a1
+    lea     (snd_preset_ptrs),a1
 .preset_ptrs:
+    moveq   #0,d0
     move.b  (a5)+,d0
     move.b  (a5)+,d1
     lsl.w   #8,d1
     or.w    d0,d1               ; offset
-    move.l  a3,d0
-    and.l   #$FFFF8000,d0
-    and.l   #$00007FFF,d1
-    add.l   d1,d0               ; absolute address
-    move.l  d0,(a1)+            ; store pointer
+    movea.l a4,a6
+    adda.w  d1,a6
+    move.l  a6,(a1)+            ; store pointer
     dbf     d7,.preset_ptrs
 
     ; --- sub_02e0h equivalent: silence all FM channels ---
@@ -2275,8 +2620,8 @@ snd_silence_all_opm:
 
 snd_extended_cmd:
     move.b  (a5)+,d1            ; read second byte
-    move.b  d0,d2
-    and.b   #$1F,d2             ; lower 5 bits = command index 0-31
+    move.b  d0,d2               ; preserve d0 and save it to d2
+    and.w   #$001f,d2           ; lower 5 bits = command index 0-31
     lsl.w   #2,d2               ; * 4 for longword table
     lea     .ext_table,a0
     move.l  (a0,d2.w),a1
@@ -2302,11 +2647,11 @@ snd_extended_cmd:
     dc.l    .ecmd_EF_lfo        ; $EF LFO depth low (single byte)
     ; $F0-$FF: from second dispatch table in original (l0427h beyond index 15)
     ; Extend here as those routines are identified
-    dc.l    .ecmd_nop_2b        ; $F0
-    dc.l    .ecmd_nop_2b        ; $F1
-    dc.l    .ecmd_nop_2b        ; $F2
-    dc.l    .ecmd_nop_2b        ; $F3
-    dc.l    .ecmd_nop_2b        ; $F4
+    dc.l    .ecmd_w_15h_16h       ; $F0 unimplemented but is the first control byte from channel stream
+    dc.l    .ecmd_l0b75h        ; $F1
+    dc.l    .ecmd_l0b80h        ; $F2
+    dc.l    .ecmd_l0b8bh        ; $F3
+    dc.l    .ecmd_l0b98h        ; $F4
     dc.l    .ecmd_nop_2b        ; $F5
     dc.l    .ecmd_nop_2b        ; $F6
     dc.l    .ecmd_nop_2b        ; $F7
@@ -2535,8 +2880,61 @@ snd_extended_cmd:
     bsr     midi_send_cc
     rts
 
+.ecmd_w_15h_16h:  ; d1 is the last byte read from stream
+	lsl.b   #3,d1
+	and.w   #$00ff,d1
+    movea.l (snd_preset_ptr_002),a2
+	adda.w  d1,a2
+    move.l  a2,(CH_INST_PTR,a4)
+    rts
+
+.ecmd_l0b75h:  ; d1 is the last byte read from stream
+	and.w   #$00ff,d1
+	add.w   #$000a,d1
+	add.b   #$1,(a5,d1.w)
+    rts
+
+.ecmd_l0b80h:
+	and.w   #$00ff,d1
+	add.w   #$000a,d1
+	sub.b   #$1,(a5,d1.w)
+    rts
+
+.ecmd_l0b8bh:
+    move.b  (a5)+,d2
+	and.w   #$00ff,d1
+	add.w   #$000a,d1
+    move.b  d2,(a5,d1.w)
+	rts
+
+.ecmd_l0b98h:
+	and.w   #$00ff,d1
+	move.b  (a5)+,d2
+    move.b  (a5)+,d3
+    move.b  (a5)+,d4
+    lea     (.small_array),a2
+    tst.b   (a2,d1.w)
+    bne     .exit
+    lsl.w   #$8,d4
+    move.b  d3,d4
+    lea     (snd_track_ptr),a2
+    movea.l (a2),a5
+    adda.w  d4,a5
+.exit
+    rts
+
+.small_array:
+    ds.b 6
+
 ; --- NOP for unimplemented commands ($F0-$FF, 2-byte) ---
 .ecmd_nop_2b:
+    rts
+
+ecmd_r_15h_16h:  ; d1 is the value modify and it returns d0
+    and.w   #$0007,d1       ; clamp index to 0-7 (max 8 entries)
+    movea.l (CH_INST_PTR,a4),a2
+    adda.w  d1,a2
+    move.b  (a2),d0
     rts
 
 
@@ -2552,10 +2950,10 @@ snd_load_preset:
     btst    #5,(CH_CONFIG,a4)
     bne     .midi_preset
 
-    ; --- FM preset: 36-byte entries ---
+    ; --- FM preset: 36-byte entries (file format, not RAM block size) ---
     moveq   #0,d0
     move.b  d2,d0
-    mulu.w  #INST_CH_SIZE,d0    ; index * 36
+    mulu.w  #FM_PRESET_ENTRY_SIZE,d0    ; index * 36
     move.l  (snd_fm_preset_ptr),a3
     adda.l  d0,a3               ; a3 = FM preset entry
 
@@ -2787,22 +3185,24 @@ snd_inst_channel_tick:
 ; =============================================================================
 
 snd_inst_read_event:
-    ; Load 32-bit stream pointer as longword from channel block
-    move.l  (CH_PTR_LO,a4),a5
+    ; Load 32-bit stream pointer (aligned field — CH_PTR_LO at $0B is odd
+    ; and raises a 68000 address error exception on move.l, which is the
+    ; "$03FF0562 on the stack but no register" crash being investigated)
+    move.l  (INST_STREAM_PTR,a4),a5
 
     move.b  (a5)+,d0            ; read event byte
     move.b  d0,d2
 
     ; Check lower nibble for command vs note
     move.b  d0,d1
-    and.b   #$0F,d1
-    cmp.b   #$0F,d1
+    and.b   #$0f,d1
+    cmp.b   #$0f,d1
     bne.b   .inst_note          ; lower != $0F → note/duration event
 
     ; Command: upper nibble = index
     move.b  (a5)+,d1            ; read second byte
     lsr.b   #4,d2               ; upper nibble of original byte = command index
-    and.b   #$0F,d2
+    and.w   #$000f,d2
     lsl.w   #2,d2               ; * 4 for table
     lea     .inst_cmd_table,a0
     move.l  (a0,d2.w),a1
@@ -2823,8 +3223,8 @@ snd_inst_read_event:
     ; Note event could trigger key-on here — add when note format confirmed
 
 .save_inst_ptr:
-    ; Save updated stream pointer as full 32-bit longword
-    move.l  a5,(CH_PTR_LO,a4)
+    ; Save updated stream pointer as full 32-bit longword (aligned field)
+    move.l  a5,(INST_STREAM_PTR,a4)
     rts
 
 ; Instrument command dispatch table (l00b2h_table equivalent)
@@ -2880,11 +3280,10 @@ snd_inst_read_event:
     mulu.w  #29,d0
     move.l  (snd_inst_table),a3
     adda.l  d0,a3
-    ; Store loop pointer (instrument patch address)
-    move.l  a3,d0
-    move.b  d0,(CH_LOOP_LO,a4)
-    lsr.l   #8,d0
-    move.b  d0,(CH_LOOP_HI,a4)
+    ; Store patch pointer (instrument patch address) as full 32-bit
+    ; longword — previously truncated to 16 bits via CH_LOOP_LO/HI byte
+    ; pair, which silently lost the upper 16 bits of the RAM address
+    move.l  a3,(INST_PATCH_PTR,a4)
     ; Write patch to OPM
     bsr     snd_write_fm_patch
     ; Apply volume (sub_0ffdh equivalent)
@@ -2897,26 +3296,20 @@ snd_inst_read_event:
 .ic_set_vol:
     move.b  d1,(CH_VOLUME,a4)
     bsr     snd_calc_combined_volume
-    ; Load patch pointer from CH_LOOP_LO/HI
-    moveq   #0,d0
-    move.b  (CH_LOOP_HI,a4),d0
-    lsl.l   #8,d0
-    move.b  (CH_LOOP_LO,a4),d0
-    movea.l d0,a3
+    ; Load patch pointer as full 32-bit longword (aligned field)
+    move.l  (INST_PATCH_PTR,a4),a3
     lea     ($0C,a3),a2
     bsr     snd_write_tl_opm
     rts
 
 ; --- $X6: load vibrato data (l0e62h) ---
-; Copy 5 bytes from stream to channel block at +$15
+; Copy 5 bytes from stream to instrument channel block at +$15
 .ic_load_vib:
     bset    #1,(INST_STATUS,a4)
     lea     ($15,a4),a1
-    move.b  (a5)+,(a1)+
-    move.b  (a5)+,(a1)+
-    move.b  (a5)+,(a1)+
-    move.b  (a5)+,(a1)+
-    move.b  (a5)+,(a1)+
+    REPT 5
+        move.b  (a5)+,(a1)+
+    ENDR
     bclr    #2,(INST_STATUS,a4)
     rts
 
@@ -3087,10 +3480,13 @@ snd_stop_all_inst:
 ; =============================================================================
 
 snd_load_inst_patch:
-    ; Copy patch data into channel block (INST_CH_SIZE bytes)
+    ; Copy patch data into channel block (36 bytes — original file format
+    ; size, NOT INST_CH_SIZE, which is our enlarged RAM block and would
+    ; overrun the source patch entry and then clobber the aligned pointer
+    ; fields we added past the original 36 bytes)
     movea.l a4,a3
     movea.l a2,a0
-    move.w  #INST_CH_SIZE-1,d0
+    move.w  #FM_PRESET_ENTRY_SIZE-1,d0
 .copy:
     move.b  (a0)+,(a3)+
     dbf     d0,.copy
@@ -3281,12 +3677,21 @@ snd_psg_mixer:      ds.b    1       ; global MIDI/PSG mixer state (mirrors l1397
 
 ; --- Track and asset pointers (replace Z80 bank+offset system) ---
     align 4
-snd_track_ptr:      ds.l    1       ; current track base pointer
+snd_track_ptr:      ds.l    1       ; current track base pointer (track itself,
+                                    ; NOT the bank base — used for header parsing)
+snd_bank_base:      ds.l    2       ; absolute base address of bank 0 / bank 1
+                                    ; in music_data RAM, set by setup_driver_assets.
+                                    ; Header offsets in the track data are relative
+                                    ; to THIS, not to snd_track_ptr — the two are
+                                    ; only equal for the very first track in a bank.
 snd_track_table:    ds.l    32      ; pointers to decompressed track data in RAM
 snd_inst_table:     ds.l    1       ; pointer to instrument/patch table in RAM
 snd_arp_table:      ds.l    1       ; pointer to arpeggio pattern table in RAM
+snd_preset_ptrs:                    ; 4 pointers initialised in sub_0203h
 snd_fm_preset_ptr:  ds.l    1       ; FM preset table base
 snd_midi_preset_ptr: ds.l   1       ; MIDI/PSG preset table base
+snd_preset_ptr_002: ds.l    1       ;
+snd_preset_ptr_003: ds.l    1       ;
 
 ; --- Channel state blocks ---
 ; Music channels: MUSIC_CH_BASE equivalent
@@ -3302,6 +3707,9 @@ snd_adpcm_len:      ds.l    1       ; remaining bytes in current sample
 
 ; Saved interrupt vector (set by snd_init via _INTVCS, restored by cleanup)
 saved_vblank_vec:   ds.l    1
+
+; Saved supervisor stack pointer (set by _SUPER call in snd_init)
+saved_ssp:          ds.l    1
 
 ; --- MIDI note tracking (for note-off) ---
 snd_midi_notes:     ds.b    3       ; current note per MIDI PSG channel (0-2)

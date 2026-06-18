@@ -160,7 +160,7 @@ main:
     ; --- Debug: dump first 8 bytes of music data ---
     lea     str_music_hdr,a0
     bsr     print_string
-    lea     (music_data),a0     ; $04638e for debugging
+    lea     (music_data),a0
     bsr     print_hex_bytes_8
     bsr     print_new_line
 
@@ -189,7 +189,7 @@ main:
     ; --- Initialise sound driver ---
     clr.l   (irq_counter)
     clr.l   (opm_write_count)
-    jsr     snd_init
+    jsr     snd_init        ; $035652, sets interrupt to jump to $0362a4
 
     ; --- Debug: verify _INTVCS assembled to correct address $FF25 ---
     pea     str_intvcs_check
@@ -389,6 +389,16 @@ discover_tracks:
 ; =============================================================================
 
 setup_driver_assets:
+    ; Store correct bank base addresses for header offset resolution.
+    ; snd_load_track needs the BANK base (music_data / music_data+32KB),
+    ; not a track's own address — these are looked up directly here
+    ; rather than derived by masking, since music_data is a BSS variable
+    ; at an arbitrary (non-bank-aligned) RAM address.
+    lea     (music_data),a0
+    move.l  a0,(snd_bank_base)
+    lea     (music_data+MUSIC_BANK_SIZE),a0
+    move.l  a0,(snd_bank_base+4)
+
     ; Bank 0 tracks → snd_track_table slots 0-15
     lea     (snd_track_table),a2
     move.w  (bank0_track_count),d7
@@ -640,6 +650,7 @@ cmd_play_track:
     move.b  d2,(shell_track)
     move.b  d2,d1
     clr.b   (shell_paused)
+
     jsr     snd_cmd_play_music
     rts
 
@@ -784,11 +795,15 @@ cleanup:
 
     jsr     snd_silence_all
 
-    ; Restore original timer B handler via DOS _INTVCS (user-mode safe)
+    ; Mask the FM Audio source interrupt at the MFP before removing handler
+    bclr    #3,(MFP_IMRB)
+    bclr    #3,(MFP_IERB)
+
+    ; Restore original handler on the FM Audio source vector ($43)
     ; saved_vblank_vec was set by snd_init from the _INTVCS return value
     move.l  (saved_vblank_vec),-(sp)   ; old handler address
-    move.w  #VBLANK_VECTOR,-(sp)       ; vector number $4D
-    DOS     _INTVCS                       ; DOS _INTVCS
+    move.w  #FM_IRQ_VECTOR,-(sp)       ; vector number $43
+    DOS     _INTVCS
     addq.l  #6,sp
 
     ; Stop OPM timer B (direct chip register write — always allowed)

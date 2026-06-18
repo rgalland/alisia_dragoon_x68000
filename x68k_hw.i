@@ -334,7 +334,10 @@ MFP_TCDR            equ $E88023
 MFP_TDDR            equ $E88025
 
 MFP_VECTOR_BASE     equ $40
-VBLANK_VECTOR       equ $4D
+FM_IRQ_VECTOR       equ $43    ; MFP FM Audio source — this is where YM2151 timer interrupts land
+VBLANK_VECTOR       equ $46
+TIMER_B_VECTOR      equ $48
+TIMER_A_VECTOR      equ $4D
 
 
 ; =============================================================================
