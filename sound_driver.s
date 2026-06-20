@@ -133,9 +133,13 @@ opm_carrier_mask:
 ; =============================================================================
 ; FM frequency table — confirmed from verified Z80 binary
 ; 3 bytes per note: [ix+$22 value] [F-number low] [F-number high with block]
-; 14 entries covering the game's pitch range
-; Used by sub_07dbh FM path (add $19 offset, * 3 per note)
-; On X68000: F-number/block → OPM KeyCode/KeyFraction conversion applied at runtime
+; 12 entries — one chromatic octave (C through B), confirmed against the
+; verified Z80 source (immediately followed there by psg_freq_table at
+; offset $3D, leaving no room for additional FM entries)
+; Used by snd_calc_frequency to preserve CH_FREQ_BYTE for other code that
+; reads it; pitch→OPM KeyCode is derived from chromatic index + CH_OCTAVE
+; directly, not from these F-number/block values (see snd_calc_frequency)
+; =============================================================================
 md_fm_freq_table:
     dc.b    $24,$83,$02     ; note 1  C
     dc.b    $26,$aa,$02     ; note 2  C#
@@ -149,59 +153,52 @@ md_fm_freq_table:
     dc.b    $3c,$3a,$04     ; note 10 A
     dc.b    $40,$7b,$04     ; note 11 A#
     dc.b    $44,$bf,$04     ; note 12 B
-    dc.b    $cb,$5c,$0d     ; note 13
-    dc.b    $c0,$9c,$0c     ; note 14
 
 ; PSG frequency table — confirmed from verified Z80 binary
 ; 3 bytes per note, PSG period values (descending = higher pitch)
 ; Used by sub_07dbh PSG path (add $3D offset)
 ; Not needed for X68000 port (PSG replaced by MIDI) — kept for reference
 md_psg_freq_table:
-    dc.b    $b5,$e7,$0b
-    dc.b    $ab,$3c,$0b
-    dc.b    $a1,$9a,$0a
-    dc.b    $98,$02,$0a
-    dc.b    $8f,$72,$09
-    dc.b    $87,$ea,$08
-    dc.b    $80,$6a,$08
-    dc.b    $78,$f1,$07
-    dc.b    $72,$7f,$07
-    dc.b    $6b,$13,$07
+    dc.b    $cb,$5c,$0d     ; note 1  C
+    dc.b    $c0,$9c,$0c     ; note 2  C#
+    dc.b    $b5,$e7,$0b     ; note 3  D
+    dc.b    $ab,$3c,$0b     ; note 4  D#
+    dc.b    $a1,$9a,$0a     ; note 5  E
+    dc.b    $98,$02,$0a     ; note 6  F
+    dc.b    $8f,$72,$09     ; note 7  F#
+    dc.b    $87,$ea,$08     ; note 8  G
+    dc.b    $80,$6a,$08     ; note 9  G#
+    dc.b    $78,$f1,$07     ; note 10 A
+    dc.b    $72,$7f,$07     ; note 11 A#
+    dc.b    $6b,$13,$07     ; note 12 B
 
-; OPM KeyCode derivation from MD FM frequency table
-; The MD F-number encodes pitch as a continuous value
-; For OPM we use the note index directly via opm_note_table
-; The ix+$22 byte from md_fm_freq_table is stored in CH_FREQ_BYTE
-; and used for arpeggio/vibrato calculations — preserve it exactly
-
-; MD F-number high byte bit layout: [block(3)][F-num-hi(5)]
-; block = octave offset from base octave
-; Extract: block = (F-hi >> 5) & 7, F-num-hi = F-hi & $1F
-; On OPM: KeyCode = (octave << 4) | opm_note_nibble
-;          KeyFraction = (fine-tune adjusted, bits 7-2)
-; OPM note nibble values (bits 3-0 of KC register):
+; OPM KeyCode note-nibble table
+; Indexed 0-11 by chromatic index (0=C ... 11=B), matching the chromatic
+; index produced by snd_calc_frequency (pitch-1, post fine-tune wrap).
+; OPM note nibble values (bits 3-0 of the $28+ch KC register):
 ;   C=0, C#=1, D=2, D#=4, E=5, F=6, F#=8, G=9, G#=10, A=12, A#=13, B=14
-;   Values 3, 7, 11 are unused (hardware quirk — skip them)
-; MD pitch index 1=C through 12=B (semitone chromatic scale)
-; Indices 13-14: check original Z80 frequency table for exact mapping
+;   Values 3, 7, 11 are unused (OPM hardware quirk — skip them)
+; There is no F-number/block math involved any more — md_fm_freq_table's
+; 12 entries (one chromatic octave, confirmed against the verified Z80
+; source) map 1:1 onto this table by chromatic index; octave comes from
+; CH_OCTAVE rather than from a 13th/14th table entry (the original
+; md_fm_freq_table only ever holds 12 notes — there is no 13th/14th
+; entry on the Z80 source to verify against).
 ; =============================================================================
 
 opm_note_table:
-    dc.b    $00         ; index 0  unused (rest handled separately)
-    dc.b    $00         ; index 1  C
-    dc.b    $01         ; index 2  C#
-    dc.b    $02         ; index 3  D
-    dc.b    $04         ; index 4  D#
-    dc.b    $05         ; index 5  E
-    dc.b    $06         ; index 6  F
-    dc.b    $08         ; index 7  F#
-    dc.b    $09         ; index 8  G
-    dc.b    $0A         ; index 9  G#
-    dc.b    $0C         ; index 10 A
-    dc.b    $0D         ; index 11 A#
-    dc.b    $0E         ; index 12 B
-    dc.b    $00         ; index 13 verify against original table
-    dc.b    $00         ; index 14 verify against original table
+    dc.b    $00         ; index 0  C
+    dc.b    $01         ; index 1  C#
+    dc.b    $02         ; index 2  D
+    dc.b    $04         ; index 3  D#
+    dc.b    $05         ; index 4  E
+    dc.b    $06         ; index 5  F
+    dc.b    $08         ; index 6  F#
+    dc.b    $09         ; index 7  G
+    dc.b    $0A         ; index 8  G#
+    dc.b    $0C         ; index 9  A
+    dc.b    $0D         ; index 10 A#
+    dc.b    $0E         ; index 11 B
 
 
 ; =============================================================================
@@ -248,14 +245,16 @@ CH_CONFIG           equ $00     ; [B] ix+$00 — channel configuration byte
 CH_DISABLE          equ $01     ; [B] ix+$01 — disable flag: non-zero
                                 ; suppresses hw writes. Set during channel
                                 ; init, cleared when ready.
-CH_FREQ_LO          equ $02     ; [B] ix+$02 — frequency low byte
+;CH_FREQ_LO          equ $02     ; [B] ix+$02 — frequency low byte
                                 ;   FM: OPM KeyCode (octave<<4 | note_nibble)
                                 ;   MIDI: MIDI note number (0-127)
-CH_FREQ_HI          equ $03     ; [B] ix+$03 — frequency high byte
+;CH_FREQ_HI          equ $03     ; [B] ix+$03 — frequency high byte
                                 ;   FM: OPM KeyFraction (bits 7-2, 6 bits)
                                 ;   MIDI: unused
-CH_VIB_DELTA_LO     equ $04     ; [B] ix+$04 — vibrato frequency delta low
-CH_VIB_DELTA_HI     equ $05     ; [B] ix+$05 — vibrato frequency delta high
+CH_FREQ             equ $02     ; big endian word to replace CH_FREQ_LO and CH_FREQ_HI
+;CH_VIB_DELTA_LO     equ $04     ; [B] ix+$04 — vibrato frequency delta low
+;CH_VIB_DELTA_HI     equ $05     ; [B] ix+$05 — vibrato frequency delta high
+CH_VIB_DELTA        equ $04     ; big endian word to replace CH_VIB_DELTA_LO and CH_VIB_DELTA_HI
 CH_VIB_ACCUM        equ $06     ; [B] ix+$06 — vibrato accumulator (init $80)
 CH_FINETUNE         equ $07     ; [B] ix+$07 — fine-tune signed offset
 CH_VOLUME           equ $08     ; [B] ix+$08 — channel volume / TL base value
@@ -292,13 +291,21 @@ CH_ENV_FLAGS        equ $19     ; [B?] ix+$19 — envelope/effect flags
 CH_PORT_THRESH      equ $1A     ; [B?] ix+$1A — portamento threshold
 ;MUSIC_PRESET_LO     equ $1B     ; [M] ix+$1B — active preset data ptr low
 ;MUSIC_PRESET_HI     equ $1C     ; [M] ix+$1C — active preset data ptr high
-CH_NOTE_REG         equ $1D     ; [B] ix+$1D — note register / vibrato base
-CH_ARP_S1_LO        equ $1E     ; [M] ix+$1E — arpeggio step 1 low
-CH_ARP_S1_HI        equ $1F     ; [M] ix+$1F — arpeggio step 1 high
-CH_ARP_S2_LO        equ $20     ; [M] ix+$20 — arpeggio step 2 low
-CH_ARP_S2_HI        equ $21     ; [M] ix+$21 — arpeggio step 2 high
+CH_NOTE_REG         equ $1D     ; [B] ix+$1D — note register (b6-4=OCTAVE,b3-0=NOTE / vibrato base)
+;CH_ARP_S1_LO        equ $1E     ; [M] ix+$1E — arpeggio step 1 low
+;CH_ARP_S1_HI        equ $1F     ; [M] ix+$1F — arpeggio step 1 high
+CH_ARP_S1           equ $1E     ; [M] ix+$1e/ix+$1f — arpeggio step 1
+;CH_ARP_S2_LO        equ $20     ; [M] ix+$20 — arpeggio step 2 low
+;CH_ARP_S2_HI        equ $21     ; [M] ix+$21 — arpeggio step 2 high
+CH_ARP_S2           equ $20     ; [M] ix+$20/ix+$21 — arpeggio step 2
 CH_FREQ_BYTE        equ $22     ; [M] ix+$22 — frequency table byte
 CH_VIB_PARAMS       equ $23     ; [M] ix+$23 — vibrato parameters, 6 bytes
+CH_ARP_M1           equ $24     ; [M] ix+$24 — arp multiplier 1
+CH_ARP_M2           equ $25     ; [M] ix+$24 — arp multiplier 2
+CH_ARP_M3           equ $26     ; [M] ix+$24 — arp multiplier 3
+CH_ARP_M4           equ $27     ; [M] ix+$24 — arp multiplier 4
+CH_ARP_M5           equ $28     ; [M] ix+$24 — arp multiplier 5
+CH_ARP_COUNTER2     equ $29     ; [M] ix+$29 — arpeggio counter
 CH_ARP_BASE         equ $2A     ; [M] ix+$2A — arpeggio base value, 5 bytes
                                 ; ($2A-$2E inclusive)
 CH_VIB_DEPTH        equ $2B     ; [M] ix+$2B — vibrato depth parameter
@@ -323,35 +330,36 @@ CH_LOOP_PTR         equ $3a     ; [B] NEW (no ix+ equivalent) — replaces
                                 ; CH_LOOP_LO/HI (ix+$0D/$0E) for move.l.
                                 ; Loop pointer.
 CH_INST_PTR         equ $3e     ; pointer to replace +$15 and +$16
-MUSIC_PRESET_PTR    equ $42     ; [M] replaces ix+$1B and ix+$1C
+CH_PRESET_PTR       equ $42     ; [M] replaces ix+$1B and ix+$1C
 
 MUSIC_CH_SIZE       equ $46     ; was $36 (original Z80 size)
 
 ; -----------------------------------------------------------------------
 ; [I] INSTRUMENT channel block
 ; -----------------------------------------------------------------------
-INST_VIB_CALC_0F    equ $0F     ; [I] vibrato calc scratch — exact role
+INST_VIB_CALC       equ $0F     ; [I] vibrato calc scratch — exact role
                                 ; still loose; confirmed only as written
                                 ; by l0f45h's multiply+double sequence
-INST_VIB_RESULT_LO  equ $10     ; [I] vibrato calc result low byte
-INST_VIB_RESULT_HI  equ $11     ; [I] vibrato calc result high byte
-INST_VIB_RESULT2_LO equ $12     ; [I] second vibrato calc result low byte
-INST_VIB_RESULT2_HI equ $13     ; [I] second vibrato calc result high byte
-INST_VIB_INPUT_E    equ $14     ; [I] vibrato calc multiplier input (the
-                                ; "ld e,(ix+$14)" feeding sub_0b4ah,
-                                ; multiplied together with byte at $15)
-INST_VIB_PARAMS     equ $15     ; [I] vibrato parameters, 5 bytes
-                                ; ($15-$19): $16=multiplier (read at
-                                ; l0f45h's "ld h,(ix+$16)"), $17/$18=
-                                ; rate selectors, $19=depth/sign (bit 7
-                                ; = sign, bits 0-6 = magnitude)
+;INST_VIB_RESULT_LO  equ $10     ; [I] vibrato calc result low byte
+;INST_VIB_RESULT_HI  equ $11     ; [I] vibrato calc result high byte
+INST_VIB_RESULT     equ $10     ; [I] big endian word to replace INST_VIB_RESULT_LO and INST_VIB_RESULT_HI
+;INST_VIB_RESULT2_LO equ $12     ; [I] second vibrato calc result low byte
+;INST_VIB_RESULT2_HI equ $13     ; [I] second vibrato calc result high byte
+INST_VIB_RESULT2    equ $12     ; [I] big endian word to replace INST_VIB_RESULT2_LO and INST_VIB_RESULT2_HI
+
+INST_NOTE           equ $14     ; [I] set in the inst note routine from note table
+INST_VIB_PARAM      equ $15     ; [I] vibrato parameter
+INST_VIB_PARAM2     equ $16     ; [I] vibrato parameter 2
+INST_DURATION1      equ $17     ; [I]
+INST_DURATION2      equ $18     ; [B?] ix+$18 — note duration counter
+INST_DUR_VAR        equ $19     ; [I] duration variation, b7=duration select, b6-0=value
 INST_VIB_SUBCOUNTER equ $1A     ; [I] vibrato sub-counter, decremented
-                                ; each tick by l0f45h
 INST_STATUS         equ $1B     ; [I] ix+$1B — instrument channel status
                                 ;   bit 0: channel active
                                 ;   bit 1: vibrato enable
                                 ;   bits 7-6: panning bits
 INST_DURATION       equ $1C     ; [I] ix+$1C — instrument duration counter
+INST_OCTAVE_NOTE    equ $1D     ; [B] ix+$1D — octave/note index (b6-4=OCTAVE,b3-0=NOTE IDX)
 INST_VOL_VAR        equ $1E     ; [I] ix+$1E — volume variation to apply to the volume register +$08
 INST_STEP_RATE      equ $1F     ; [I] ix+$1F — fractional step rate
 INST_CH_INDEX       equ $20     ; [I] ix+$20 — channel index for address calc
@@ -370,6 +378,24 @@ FM_MUSIC_COUNT      equ 6       ; FM music channels
 MIDI_MUSIC_COUNT    equ 3       ; MIDI PSG replacement channels
 INST_CH_COUNT       equ 4       ; instrument channels
 
+; macros
+; =============================================================================
+; WRITE_CH_PANNING_REG_TO_YM
+; write_opm_ch
+; Write to OPM register with disable flag check
+; Equivalent of sub_0086h (always writes) combined with ix+$01 check
+; a4 = channel block, d0.b = register, d1.b = data
+; =============================================================================
+
+; WRITE_CH_PANNING_REG_TO_YM
+WRITE_CH_PANNING_REG_TO_YM macro
+    move.b  d1,(CH_LFO_DEPTH,a4)
+    move.b  (CH_,a4),d0
+    andi.b  #$07,d0
+    addi.b  #$b4,d0
+    ld b,a
+    call write_to_enabled_channel_regs
+    endm
 
 ; =============================================================================
 ; Duration lookup table
@@ -398,7 +424,6 @@ snd_duration_table_2:
 ; Code section
 ; =============================================================================
 
-;    org     $22000
     text
     even
 
@@ -1096,8 +1121,8 @@ snd_music_tick:
     moveq   #FM_MUSIC_COUNT-1,d7
 .silence_loop:
     ; Check if channel has a preset (ix+$1b/$1c non-zero)
-    lea     (MUSIC_PRESET_PTR,a4),a2
-    tst.l   a2
+    lea     (CH_PRESET_PTR,a4),a2
+    cmpa.l  #0,A0
     beq.b   .silence_next
     adda.w  #$8,a2                  ; data source
     ; Temporarily clear disable flag and write TL=$7F to all operators
@@ -1196,23 +1221,30 @@ snd_channel_tick:
     btst    #0,(CH_FLAGS,a4)
     bne     .skip
 
+    tst.b   (snd_tempo_ovf)
+    bne     .check_fade
     ; --- Decrement note duration (mirrors dec (ix+$18)) ---
     subq.b  #1,(CH_DURATION,a4)
-    beq     snd_read_event      ; expired → read next event
-
+    beq     .next
+    bsr     snd_read_event      ; expired → read next event
+    bra     .check_fade
+.next:
     ; --- Check portamento threshold (mirrors cp (ix+$1A)) ---
     move.b  (CH_PORT_THRESH,a4),d0
     cmp.b   (CH_DURATION,a4),d0
-    bhi     .skip               ; above threshold
+    bhi     .check_fade
 
     ; --- Check sustain flag (mirrors bit 4,(ix+$19)) ---
     btst    #4,(CH_ENV_FLAGS,a4)
-    bne     .skip
+    bne     .check_fade
 
     ; --- Apply per-tick effects (mirrors l0878h / l0878h) ---
     bclr    #0,(CH_ENV_FLAGS,a4) ; clear note playing flag (l0878h)
-    bsr     snd_apply_effects
+    bsr     snd_rst_flag_key_off
 
+.check_fade:
+    tst.b   (snd_fade_flag)
+    bne     snd_apply_portamento
 .skip:
     rts
 
@@ -1300,11 +1332,10 @@ snd_note_event:
     lsr.b   #4,d0
     bsr     snd_duration_lookup
     move.b  d0,(CH_DURATION,a4)
-
     ; Get pitch from lower nibble
     move.b  d2,d0
-    and.b   #$0F,d0
-
+    andi.b  #$0f,d0
+    beq     snd_rst_flag_key_off
     ; Rest (pitch 0) — set duration only, apply effects
     beq.b   .rest
 
@@ -1313,19 +1344,15 @@ snd_note_event:
     beq     snd_save_stream_ptr
 
     ; Calculate and write frequency
-    bsr     snd_calc_frequency  ; result in CH_FREQ_LO/HI
+    bsr     snd_calc_frequency  ; result in CH_FREQ (KeyCode<<8 | KeyFraction)
 
     ; Check retrigger suppress (ix+$19 bit 5)
-    move.b  (CH_ENV_FLAGS,a4),d1
-    bclr    #5,d1               ; test and clear
-    move.b  d1,(CH_ENV_FLAGS,a4)
-    btst    #5,d1
+    bclr    #$5,(CH_ENV_FLAGS,a4)
     bne.b   .skip_retrigger     ; suppressed — keep playing
 
     ; Initialise vibrato state
     move.b  (CH_VIB_PARAMS,a4),(CH_NOTE_REG,a4)
-    clr.b   (CH_VIB_DELTA_LO,a4)
-    clr.b   (CH_VIB_DELTA_HI,a4)
+    clr.w   (CH_VIB_DELTA,a4)
     move.b  #$80,(CH_VIB_ACCUM,a4)
 
     ; Write frequency to hardware
@@ -1340,25 +1367,58 @@ snd_note_event:
     bra     snd_save_stream_ptr
 
 .rest:
-    bsr     snd_apply_effects
+    bclr    #0,(CH_ENV_FLAGS,a4) ; clear note playing flag (l0878h)
+    bsr     snd_key_off
     bra     snd_save_stream_ptr
 
 
 ; =============================================================================
 ; snd_calc_frequency
 ; Calculate OPM KeyCode/KeyFraction or MIDI note from pitch + octave
-; d0.b = pitch index (1-14, lower nibble of note byte)
+; d0.b = pitch index (1-12, lower nibble of note byte; 13/14 never occur
+;   on the FM path — md_fm_freq_table only has 12 chromatic entries.
+;   Pitch values 13/14 are PSG-only on the original Z80 and have no FM
+;   meaning, so they are not handled here.)
 ; a4 = channel block
-; Result stored in CH_FREQ_LO (KeyCode or MIDI note) and CH_FREQ_HI (KF)
-; Equivalent of sub_07dbh FM path
+; Result stored in CH_FREQ:
+;   FM:   high byte = OPM KeyCode   ((octave<<4) | note_nibble)
+;         low byte  = OPM KeyFraction (bits 5-0 only are meaningful)
+;   MIDI: low byte  = MIDI note number (0-127)
+; Equivalent of sub_07dbh
 ;
-; MD frequency table → OPM conversion:
-;   MD stores: ix+$22 byte, F-number low, F-number high (with block/octave)
-;   OPM uses:  KeyCode = (octave<<4)|note_nibble, KeyFraction (6 bits)
-;   We use the pitch index to look up the OPM note nibble directly
-;   The ix+$22 value is preserved in CH_FREQ_BYTE for arpeggio/vibrato
-;   The octave from CH_OCTAVE is combined with the base block from the table
+; FM path — no YM2612 F-number math is used. OPM pitch is selected
+; directly from the pitch index and CH_OCTAVE:
+;   chromatic_index (0-11) = pitch - 1, adjusted by fine-tune semitone
+;     carry (see below), then wrapped into 0-11 with octave carry
+;   KeyCode     = (octave << 4) | opm_note_table[chromatic_index]
+;   KeyFraction = 6-bit fractional remainder from fine-tune
+;
+; CH_FINETUNE (signed byte, ix+$07 on the Z80) was a raw addend to the
+; YM2612 F-number there; F-number deltas between adjacent semitones in
+; md_fm_freq_table are NOT constant (they range ~39 to ~68 across one
+; octave), so there is no single exact "F-number units per semitone"
+; ratio to preserve faithfully. OPM also has no F-number concept, so a
+; literal numeric port isn't possible here. Instead, CH_FINETUNE is
+; reinterpreted as a signed fixed-point semitone offset, split via a
+; single arithmetic shift:
+;     semitone_carry = finetune asr FINETUNE_UNITS_SHIFT   (signed)
+;     key_fraction    = finetune and (2^FINETUNE_UNITS_SHIFT - 1)
+; With FINETUNE_UNITS_SHIFT=6 (64 units/semitone), the full signed byte
+; range covers about -2..+2 semitones, which matches the order of
+; magnitude of what large fine-tune values produced on the original
+; YM2612 F-number (see comment above). This is a calibration choice,
+; not a measured hardware constant — listen against the original Mega
+; Drive mix and adjust FINETUNE_UNITS_SHIFT if the sweep feels too
+; wide or too narrow. A right-shift was chosen over a divide so this
+; stays a 2-instruction operation.
+;
+; CH_FREQ_BYTE is still populated from md_fm_freq_table for any other
+; code that reads it (e.g. arpeggio); it no longer feeds the pitch
+; calculation itself.
 ; =============================================================================
+
+FINETUNE_UNITS_SHIFT    equ 6       ; 2^6 = 64 finetune units per semitone
+FINETUNE_FRAC_MASK      equ $3F     ; (1 << FINETUNE_UNITS_SHIFT) - 1
 
 snd_calc_frequency:
     ; Check MIDI/PSG channel
@@ -1366,18 +1426,17 @@ snd_calc_frequency:
     bne     .snd_calc_midi_freq
 
     ; --- OPM/FM path ---
-    ; Equivalent of sub_07dbh FM path:
-    ;   dec a / ld b,a / add a,a / add a,b → a = (pitch-1) * 3
-    ;   add a,$19 → index into FM freq table
-    subq.b  #1,d0               ; base-0 pitch index (0-13)
+    subq.b  #1,d0                ; d0 = chromatic index, base-0 (0-11)
+    move.b  d0,d5                ; d5 = chromatic index, kept clean for later
+
+    ; Preserve CH_FREQ_BYTE for any other code that still reads it.
+    ; ix+$22 equivalent: byte 0 of the matching md_fm_freq_table entry.
     move.b  d0,d1
     add.b   d0,d0
-    add.b   d1,d0               ; d0 = pitch_index * 3
+    add.b   d1,d0                ; d0 = chromatic_index * 3
     lea     md_fm_freq_table,a0
-    adda.w  d0,a0               ; a0 = table entry for this pitch
-
-    ; Read and store ix+$22 equivalent (CH_FREQ_BYTE)
-    move.b  (a0)+,d1
+    adda.w  d0,a0
+    move.b  (a0),d1
     move.b  d1,(CH_FREQ_BYTE,a4)
 
     ; Read F-number low and high from table
@@ -1389,13 +1448,12 @@ snd_calc_frequency:
     move.b  (CH_FINETUNE,a4),d4
     ext.w   d4                  ; sign extend to 16-bit
     add.w   d4,d3               ; store freq in d3 for now
-    moveq   #$0,d4
+    andi.w  #$1fff,d3
     move.b  (CH_OCTAVE,a4),d4
-    lsl.w   #$11,d4             ; will be applied to word top 3 three bits
+    lsl.w   #$8,d4
+    lsl.w   #$5,d4
     or.w    d4,d3               ; store result in d3
-    move.b  d3,(CH_FREQ_LO,a4)  ;
-    lsr.w   #$8,d3
-    move.b  d3,(CH_FREQ_HI,a4)  ;
+    move.b  d3,(CH_FREQ,a4)  ;
     ; TODO see how to convert data from YM2612 to YM2151
 
     ; Now convert YM2612 block/F-number → OPM KeyCode/KeyFraction
@@ -1473,8 +1531,8 @@ freq_byte_to_opm_note:
     addq.b  #1,d2
     mulu.w  #12,d2
     add.b   d1,d2
-    move.b  d2,(CH_FREQ_LO,a4)
-    clr.b   (CH_FREQ_HI,a4)
+    andi.w  #$00ff,d2
+    move.w  d2,(CH_FREQ,a4)
     rts
 
 
@@ -1494,40 +1552,33 @@ snd_write_frequency:
 
     ; Check MIDI channel
     btst    #5,(CH_CONFIG,a4)
-    bne     .wf_done            ; MIDI: note stored in CH_FREQ_LO, sent at key-on
+    bne     .wf_done            ; MIDI: note stored in CH_FREQ, sent at key-on
 
     ; --- OPM path ---
     move.b  (CH_CONFIG,a4),d2
     and.b   #$07,d2             ; OPM channel 0-7
 
     ; Apply vibrato delta to KeyFraction
-    move.b  (CH_FREQ_HI,a4),d1
-    lsl.w   #$8,d1
-    move.b  (CH_FREQ_LO,a4),d1
-    move.b  (CH_VIB_DELTA_HI,a4),d0
-    lsl.w   #$8,d0
-    move.b  (CH_VIB_DELTA_LO,a4),d0
-    add.w   d1,d0
-    ; TODO
+    move.w  (CH_FREQ,a4),d1
+    move.w  (CH_VIB_DELTA,a4),d0
+    add.w   d0,d1               ; d1 contains the data to send REG $28+ch and $30+ch
     ; Write KeyCode first ($28+ch) — equivalent of writing $A4 on YM2612
     move.b  d2,d0
     add.b   #OPM_KC,d0          ; register $28 + channel
-    move.b  (CH_FREQ_LO,a4),d1  ; KeyCode (octave+note, no vibrato on KC)
+    lsr.w   #$1,d1              ; shift data to match YM registers
+    move.b  d1,d3               ; d3 for second reg
+    lsr.w   #$8,d1              ; d1 for first reg
     bsr     write_opm
-
     ; Write KeyFraction second ($30+ch) — equivalent of writing $A0 on YM2612
     move.b  d2,d0
-    add.b   #OPM_KF,d0          ; register $30 + channel
-    move.b  (CH_FREQ_HI,a4),d1
-    add.b   (CH_VIB_DELTA_LO,a4),d1
-    and.b   #$FC,d1
+    move.b  d3,d1               ; d3 contains value for second reg
     bsr     write_opm
 
-    ; Write panning/LFO ($20+ch) — equivalent of $B4+ch on YM2612
+    ; Write panning/LFO ($38+ch) — equivalent of $B4+ch on YM2612
     move.b  d2,d0
-    add.b   #OPM_RL_FB_CON,d0
+    add.b   #OPM_PMS_AMS,d0
     move.b  (CH_LFO_DEPTH,a4),d1 ; contains algorithm + LFO depth
-    or.b    #$C0,d1              ; ensure L+R output always set
+    ror.b   #$4,d1
     bsr     write_opm
 
 .wf_done:
@@ -1594,7 +1645,7 @@ snd_midi_key_on:
     and.b   #$7f,d2
 
     ; Store note and send note-on
-    move.b  (CH_FREQ_LO,a4),d1
+    move.w  (CH_FREQ,a4),d1
     move.b  d1,(a2,d0.w)
     bsr     midi_note_on
     movem.l (SP)+,a2    
@@ -1606,14 +1657,13 @@ snd_midi_key_on:
 ; Trigger note-off for FM or MIDI channel
 ; a4 = channel block
 ; Equivalent of the key-off write in sub_087ch (FM path)
+; will modify d0 and d1 to write to OPM
 ; =============================================================================
-
+snd_rst_flag_key_off:   ; called 3 times in original code
+    bclr    #0,(CH_ENV_FLAGS,a4)
 snd_key_off:
     btst    #5,(CH_CONFIG,a4)
-    beq.b   .fm_key_off
-    bsr     snd_midi_key_off
-    rts
-.fm_key_off:
+    bne     .snd_midi_key_off
     ; OPM key-off: write channel with no operator bits = all operators off
     move.b  (CH_CONFIG,a4),d0
     and.b   #$07,d0             ; channel only
@@ -1622,7 +1672,7 @@ snd_key_off:
     bsr     write_opm
     rts
 
-snd_midi_key_off:
+.snd_midi_key_off:
     movem.l a2,-(SP)
     lea     (snd_midi_notes),a2
     move.b  (CH_CONFIG,a4),d0
@@ -1706,6 +1756,47 @@ snd_write_tl_opm:
     dbf     d7,.tl_loop
     rts
 
+; TODO - add full reset here; d0=channel
+snd_inst_ch_reset:     ; sub_108fh:
+    mulu    #MUSIC_CH_SIZE,d0
+    lea     (snd_music_ch,d0.w),a4  ; point at correct block
+    clr.b   (CH_DISABLE,a4)
+    bsr     snd_rst_flag_key_off
+    ; write panning register    38h
+    move.b  (CH_LFO_DEPTH,a4),d1
+    move.b  (CH_CONFIG,a4),d2
+    move.b  d2,d0
+    andi.b  #$7,d0
+    addi.b  #OPM_PMS_AMS,d0
+    ror.b   #$4,d1
+    bsr     write_opm
+    ; next, write 20h, 28h, 30h
+    move.b  d2,d0
+    andi.b  #$7,d0
+    addi.b  #OPM_RL_FB_CON,d0
+    move.b  #$ff,d1
+    move.w  #$0002,d7
+.clear_20h_30h:
+    bsr     write_opm
+    addi.b  #$8,d0
+    dbf     d7,.clear_20h_30h
+    move.w  #$0002,d7
+    addi.b  #(24-1),d0
+.clear_40h_F0h: ; operators
+    bsr     write_opm
+    addi.b  #$8,d0
+    dbf     d7,.clear_40h_F0h
+    tst.l   (CH_PRESET_PTR,a4)
+    beq     .leave
+    tst.b   (snd_update_flag)
+    bne     .leave
+    btst    #$0,(CH_FLAGS,a4)
+    bne     .leave
+    lea     (CH_PRESET_PTR,a4),a3
+    bsr     snd_write_fm_patch
+    bsr     set_chan_volume
+.leave
+    rts
 
 ; =============================================================================
 ; snd_calc_combined_volume
@@ -1877,7 +1968,7 @@ snd_write_fm_patch:
     and.b   #$3F,d1             ; keep FB+ALG only
     or.b    #$C0,d1             ; add L+R output enable
     bsr     write_opm_ch
-
+    move.b  d1,(CH_ALGO,a4)     ; save algo value
     ; Re-enable channel (clear disable flag — equivalent of sub_0d63h finale)
     clr.b   (CH_DISABLE,a4)
     rts
@@ -1896,8 +1987,9 @@ snd_apply_effects:
     beq.b   .no_vib
 
     ; Advance vibrato accumulator
+    moveq   #$0,d0
     move.b  (CH_VIB_ACCUM,a4),d0
-    add.b   (CH_VIB_DELTA_LO,a4),d0
+    add.w   (CH_VIB_DELTA,a4),d0
     move.b  d0,(CH_VIB_ACCUM,a4)
     bsr     snd_write_frequency     ; rewrite with updated delta
 
@@ -1921,72 +2013,177 @@ snd_apply_effects:
 ; snd_apply_portamento
 ; Slide pitch toward target each tick
 ; a4 = channel block
-; Equivalent of portamento section in Z80 driver
+; Equivalent of portamento section l08cch in Z80 driver
 ; =============================================================================
 
 snd_apply_portamento:
     ; Only FM channels have portamento
-    btst    #5,(CH_CONFIG,a4)
-    bne     .port_done
+    tst.b   (snd_fade_ovf)
+    beq     .next
+    bsr     set_chan_volume
+    bsr     snd_apply_fade_volume
+.next:
+    btst.b  #5,(CH_CONFIG,a4)
+    bne.b   .port_done  ; for PSG
 
-    ; Advance toward target KeyFraction
-    move.b  (CH_FREQ_HI,a4),d0  ; current KF
-    move.b  (CH_PORT_TARGET,a4),d1 ; target
-
-    btst    #7,d1               ; bit 7 = direction flag (set by $EC command)
+    btst.b  #7,(CH_PORT_TARGET,a4)               ; bit 7 = direction flag (set by $EC command)
     beq.b   .port_down
-
-    ; Sliding up
-    add.b   (CH_PORT_SPEED,a4),d0
-    cmp.b   d1,d0
-    bcs.b   .port_write
-    move.b  d1,d0               ; reached target
-    bclr    #1,(CH_FLAGS,a4)    ; disable portamento
-    bra.b   .port_write
-
+    subq.b  #$1,(CH_PORT_BASE,a4)
+    bne.b   .port_down
+    move.b  (CH_LFO_DEPTH,a4),d0
+    andi.b  #$c0,d0
+    move.b  (CH_PORT_TARGET,a4),d1
+    andi.b  #$3f,d1
+    or.b    d1,d0
+    ; update OPM pan register
 .port_down:
-    sub.b   (CH_PORT_SPEED,a4),d0
-    cmp.b   d1,d0
-    bcc.b   .port_write
-    move.b  d1,d0
-    bclr    #1,(CH_FLAGS,a4)
 
-.port_write:
-    move.b  d0,(CH_FREQ_HI,a4)
-    bsr     snd_write_frequency
 
+    ; TODO as this is clearly not finished
+    ; update OPM pan register
+    ; l094bh
+    bra     snd_apply_arpeggio
 .port_done:
     rts
 
 
 ; =============================================================================
-; snd_apply_arpeggio
+; snd_apply_arpeggio (around l0961h in Z80 code)
 ; Step through arpeggio pattern
 ; a4 = channel block
 ; =============================================================================
 
 snd_apply_arpeggio:
+    btst    #5,(CH_CONFIG,a4)
+    bne.b   .arp_done
+    btst.b  #$0,(CH_ENV_FLAGS,a4)
+    beq     .arp_done
+    move.b  (CH_FLAGS,a4),d2
+    btst    #$3,d2
+    beq     .l09aah
+	btst    #$2,d2
+    bne     .l09aah
+	; dec arp counter 1
     subq.b  #1,(CH_ARP_COUNTER,a4)
     bne.b   .arp_done
-
     ; Reload counter
-    move.b  (CH_ARP_CTR_INIT,a4),(CH_ARP_COUNTER,a4)
-
-    ; Toggle step
-    btst    #4,(CH_FLAGS,a4)
-    bne.b   .arp_step2
-
-    move.b  (CH_ARP_S1_LO,a4),(CH_FREQ_HI,a4)
-    bset    #4,(CH_FLAGS,a4)
-    bra.b   .arp_write
-
-.arp_step2:
-    move.b  (CH_ARP_S2_LO,a4),(CH_FREQ_HI,a4)
-    bclr    #4,(CH_FLAGS,a4)
-
-.arp_write:
-    bsr     snd_write_frequency
-
+    move.b  (CH_ARP_CTR_INIT,a4),d1
+    move.b  d1,d0
+    andi.b  #$1f,d0
+    move.b  d0,(CH_ARP_COUNTER,a4)
+    ; dec arp counter 2
+    subq.b  #1,(CH_ARP_COUNTER2,a4)
+    bne.b   .l09a2h
+	btst    #$5,d1
+	bne     .l098fh
+	bset    #$2,d2
+    move.b  d2,(CH_FLAGS,a4)
+    bra     .l09aah
+.l098fh:
+    move.b  (CH_ARP_CTR_INIT,a4),(CH_ARP_COUNTER2,a4)
+    eor.b   #$20,d2
+    btst    #5,d2
+    bne     .l099eh       ; and skip next if set
+	eor.b   #$10,d2
+.l099eh:
+	move.b  d2,(CH_FLAGS,a4)
+.l09a2h:
+	btst    #4,d2
+    bne     .l0a6fh
+	bra     .l0a4dh
+.l09aah:
+	btst    #6,d2
+    beq     .arp_done
+    subq.b  #1,(CH_NOTE_REG,a4)
+    bne     .arp_done
+    btst.b  #$1,(CH_ENV_FLAGS,a4)
+    bne     .l0a26h		;09b5
+    btst    #$5,(CH_CONFIG,a4)
+    bne     .l09dbh		;09bb
+    moveq   #0,d0
+    moveq   #0,d1
+    move.b  (CH_FREQ_BYTE,a4),d0
+    move.b  (CH_ARP_M1,a4),d1
+    mulu.w  d0,d1
+    move.w  d1,(CH_ARP_S1,a4)
+    moveq   #0,d1
+    move.b  (CH_ARP_M2,a4),d1
+    mulu.w  d0,d1
+    move.w  d1,(CH_ARP_S2,a4)
+    bra     .l0a09h		    ;09d8
+.l09dbh:
+	moveq   #0,d0
+    moveq   #0,d1
+    move.b  (CH_FREQ_BYTE,a4),d0
+    move.b  (CH_ARP_M1,a4),d1
+    mulu.w  d0,d1
+    moveq   #0,d3
+    move.b  (CH_ARP_M2,a4),d3
+    mulu.w  d0,d3
+    move.b  (CH_OCTAVE,a4),d0
+    andi.w  #$00ff,d0
+    beq     .l09fdh
+    .l09f3h:    ; d1 = de, d3 = hl
+        ror.w   #1,d1
+        ror.w   #1,d3
+        dbf  d0,.l09f3h
+.l09fdh:
+    move.w  d3,(CH_ARP_S2,a4)
+    move.w  d1,(CH_ARP_S1,a4)
+ .l0a09h:
+	bset    #7,d2
+    move.b  (CH_ARP_M4,a4),d0
+    btst.b  #7,(CH_ARP_M5,a4)
+    bne     .l0a19h	;0a12
+	bclr    #7,d2
+    move.b  (CH_ARP_M3,a4),d0
+.l0a19h:
+    lsr.b   #1,d0
+    move.b  d0,(CH_ARP_COUNTER2,a4)
+    move.b  #$80,(CH_VIB_ACCUM,a4)
+	bset    #1,(CH_ENV_FLAGS,a4)
+.l0a26h:
+	move.b  (CH_ARP_M5,a4),d0
+    andi.b  #$1f,d0
+    move.b  d0,(CH_NOTE_REG,a4)
+    subq.b  #1,(CH_ARP_COUNTER2,a4)
+    bne     .l0a46h
+	btst    #7,d2
+	beq     .l0a3eh
+	bclr    #7,d2
+	move.b  (CH_ARP_M3,a4),d0
+    bra     .l0a43h		;0a3c
+.l0a3eh:
+	bset    #7,d2
+    move.b  (CH_ARP_M4,a4),d0
+.l0a43h:
+	move.b  d0,(CH_ARP_COUNTER2,a4)
+.l0a46h:
+	move.b  d2,(CH_FLAGS,a4)
+	btst    #7,d2
+    bne     .l0a6fh	;0a4b
+.l0a4dh:
+    move.w  (CH_ARP_S1,a4),d0
+    moveq   #$0,d2
+    move.b  (CH_VIB_ACCUM,a4),d2
+    add.w   d2,d0
+    move.b  d0,(CH_VIB_ACCUM,a4)
+    and.w   #$ff00,d0
+    beq     .arp_done
+    lsr.w   #$8,d0
+    add.w   d0,(CH_VIB_DELTA,a2)
+    bra     snd_write_frequency
+.l0a6fh:
+	move.w  (CH_ARP_S2,a4),d0
+    moveq   #$0,d2
+    move.b  (CH_VIB_ACCUM,a4),d2
+    sub.w   d2,d0
+    move.b  d0,(CH_VIB_ACCUM,a4)
+    and.w   #$ff00,d0
+    beq     .arp_done
+    lsr.w   #$8,d0
+    sub.w   d0,(CH_VIB_DELTA,a2)
+	bra     snd_write_frequency
 .arp_done:
     rts
 
@@ -2038,8 +2235,8 @@ snd_apply_fade_volume:
 .fv_loop:
     btst    #0,(CH_FLAGS,a4)    ; skip inactive
     bne.b   .fv_next
-    lea     (MUSIC_PRESET_PTR,a4),a2
-    tst.l   a2
+    lea     (CH_PRESET_PTR,a4),a2
+    cmpa.l  #0,A0
     beq.b   .fv_next
     adda.w  #$8,a2                  ; data source
     ; FM: calculate combined volume and write TL
@@ -2049,7 +2246,6 @@ snd_apply_fade_volume:
     lea     (MUSIC_CH_SIZE,a4),a4
     dbf     d7,.fv_loop
     rts
-
 
 ; =============================================================================
 ; snd_silence_all
@@ -2369,11 +2565,9 @@ ecmd_E2_vibrato:
     bset    #6,(CH_FLAGS,a4)
     move.b  d1,(CH_VIB_PARAMS,a4)
     lea     (CH_VIB_PARAMS+1,a4),a1
-    move.b  (a5)+,(a1)+
-    move.b  (a5)+,(a1)+
-    move.b  (a5)+,(a1)+
-    move.b  (a5)+,(a1)+
-    move.b  (a5)+,(a1)+
+    REPT 5
+        move.b  (a5)+,(a1)+
+    ENDR
     bclr    #1,(CH_ENV_FLAGS,a4)
 .vib_done:
     rts
@@ -2393,11 +2587,11 @@ ecmd_E4_oct_up:
 ; --- $E5: set volume (l04e0h / l04e3h) ---
 ecmd_E5_volume:
     move.b  d1,(CH_VOLUME,a4)
-set_volume:
+set_chan_volume:
     btst    #5,(CH_CONFIG,a4)
     bne.b   .vol_midi
-    lea     (MUSIC_PRESET_PTR,a4),a2
-    tst.l   a2
+    lea     (CH_PRESET_PTR,a4),a2
+    cmpa.l  #0,A0
     beq.b   .leave_ecmd_E5
     adda.w  #$8,a2                  ; data source
     ; FM: calculate combined volume and write TL
@@ -2429,19 +2623,15 @@ ecmd_E6_arpeggio:
     moveq   #0,d0
     move.b  d1,d0
     mulu.w  #5,d0               ; 5 bytes per pattern
-    move.l  (snd_arp_table),a0
+    move.l  (snd_arp_ptr),a0
     adda.l  d0,a0
     lea     (CH_ARP_BASE,a4),a1
-    move.b  (a0)+,(a1)+
-    move.b  (a0)+,(a1)+
-    move.b  (a0)+,(a1)+
-    move.b  (a0)+,(a1)+
-    move.b  (a0)+,(a1)+
+    REPT 5
+        move.b  (a0)+,(a1)+
+    ENDR
     ; If note playing, recalculate
     btst    #0,(CH_ENV_FLAGS,a4)
     beq.b   .arp_done_cmd
-    move.b  (CH_FREQ_LO,a4),d0
-    and.b   #$0F,d0             ; extract note nibble
     bsr     snd_calc_frequency
 .arp_done_cmd:
     rts
@@ -2533,29 +2723,25 @@ ecmd_EE_lfo:
 ecmd_EF_lfo:
     subq.l  #1,a5               ; single byte command
     btst    #5,(CH_CONFIG,a4)
-    bne.b   .lfo_midi
+    bne.b   lfo_midi
     ; FM: extract LFO depth from command bits 7-6, write to OPM $20+ch
     move.b  d0,d1               ; d0 = original command byte
     ;rrca    #2,d1               ; rotate bits 7-6 to bits 5-4... not valid 68k
     ror     #2,d1               ; rotate bits 7-6 to bits 5-4... not valid 68k
-    ; Correct approach: command byte is in d0 from snd_extended_cmd
-    ; bits 7-6 of the full command byte encode depth
-    ; In 68k: use lsr then mask
-    move.b  d0,d1
-    and.b   #$C0,d1             ; extract bits 7-6
+    and.b   #$c0,d1             ; extract bits 7-6
     move.b  (CH_ENV_FLAGS,a4),d2
     and.b   #$3F,d2
-    or.b    d1,d2
-    move.b  d2,(CH_ENV_FLAGS,a4)
-    move.b  d2,(CH_LFO_DEPTH,a4)
+    or.b    d2,d1
+save_ch_panning_and_write_opm:
+    move.b  d1,(CH_ENV_FLAGS,a4)
+    move.b  d1,(CH_LFO_DEPTH,a4)
     move.b  (CH_CONFIG,a4),d0
     and.b   #$07,d0
-    add.b   #OPM_RL_FB_CON,d0
-    move.b  (CH_LFO_DEPTH,a4),d1
-    or.b    #$C0,d1             ; L+R output
+    add.b   #OPM_PMS_AMS,d0
+    ror.b   #$4,d1
     bsr     write_opm_ch
     rts
-.lfo_midi:
+lfo_midi:
     ; MIDI: send CC1 modulation wheel (approximate LFO depth)
     move.b  (CH_CONFIG,a4),d0
     and.b   #$07,d0
@@ -2662,7 +2848,7 @@ snd_load_preset:
     adda.l  d0,a3               ; a3 = FM preset entry
 
     ; Store preset pointer in channel block (MUSIC_PRESET_LO/HI)
-    move.l  a3,(MUSIC_PRESET_PTR,a4)
+    move.l  a3,(CH_PRESET_PTR,a4)
 
     ; Load vibrato from preset byte 0
     move.b  (a3)+,d1
@@ -2677,8 +2863,8 @@ snd_load_preset:
     ; Load instrument patch (sub_1022h equivalent)
     addq.l  #1,a3               ; skip one byte
     bsr     snd_write_fm_patch  ; a3 points to patch data
-    lea     (MUSIC_PRESET_PTR,a4),a2
-    tst.l   a2
+    lea     (CH_PRESET_PTR,a4),a2
+    cmpa.l  #0,a0
     beq.b   .load_exit
     adda.w  #$8,a2                  ; data source
     ; Apply FM parameters (sub_08afh equivalent)
@@ -2696,7 +2882,7 @@ snd_load_preset:
     adda.l  d0,a3
 
     ; Store preset pointer
-    move.l  a3,(MUSIC_PRESET_PTR,a4)
+    move.l  a3,(CH_PRESET_PTR,a4)
 
     ; Load vibrato from byte 0
     move.b  (a3)+,d1
@@ -2765,35 +2951,8 @@ snd_rel_volume:
     move.b  #$7F,d2
 .rv_clamp:
     move.b  d2,(CH_VOLUME,a4)
-
-    ; Apply to hardware
-    btst    #5,(CH_CONFIG,a4)
-    bne.b   .rv_midi
-
-    ; FM: write TL
-    lea     (MUSIC_PRESET_PTR,a4),a2
-    tst.l   a2
-    beq.b   .rel_vol_exit
-    adda.w  #$8,a2                  ; data source
-    bsr     snd_calc_combined_volume
-    bsr     snd_write_tl_opm
-.rel_vol_exit:
+    bsr     set_chan_volume
     rts
-
-.rv_midi:
-    ; MIDI: CC11 expression
-    move.b  (CH_CONFIG,a4),d0
-    and.b   #$07,d0
-    sub.b   #FM_MUSIC_COUNT,d0
-    move.b  d2,d3
-    not.b   d3
-    lsr.b   #1,d3
-    and.b   #$7F,d3
-    move.b  d3,d2
-    move.b  #11,d1
-    bsr     midi_send_cc
-    rts
-
 
 ; =============================================================================
 ; snd_duration_lookup
@@ -2876,30 +3035,24 @@ snd_inst_channel_tick:
 ; =============================================================================
 
 snd_inst_read_event:
-    ; Load 32-bit stream pointer (aligned field — CH_PTR_LO at $0B is odd
-    ; and raises a 68000 address error exception on move.l, which is the
-    ; "$03FF0562 on the stack but no register" crash being investigated)
+    ; Load 32-bit stream pointer
     move.l  (CH_STREAM_PTR,a4),a5
-
+.read_inst_data
     move.b  (a5)+,d0            ; read event byte
     move.b  d0,d2
-
     ; Check lower nibble for command vs note
     move.b  d0,d1
     and.b   #$0f,d1
     cmp.b   #$0f,d1
     bne.b   .inst_note          ; lower != $0F → note/duration event
-
     ; Command: upper nibble = index
     move.b  (a5)+,d1            ; read second byte
-    lsr.b   #4,d2               ; upper nibble of original byte = command index
-    and.w   #$000f,d2
-    lsl.w   #2,d2               ; * 4 for table
+    and.w   #$00f0,d2
+    lsr.b   #2,d2               ; point at long words
     lea     .inst_cmd_table,a0
     move.l  (a0,d2.w),a1
     jsr     (a1)
-    bra     .save_inst_ptr
-
+    bra     .read_inst_data
 .inst_note:
     ; l0ec8h: note/duration event
     ; Positive byte → use previous duration
@@ -2911,11 +3064,48 @@ snd_inst_read_event:
 .use_prev:
     move.b  d1,(INST_DURATION,a4)
     move.b  d1,(INST_PREV_DUR,a4)
-    ; Note event could trigger key-on here — add when note format confirmed
-
-.save_inst_ptr:
-    ; Save updated stream pointer as full 32-bit longword (aligned field)
-    move.l  a5,(CH_STREAM_PTR,a4)
+    move.l  a5,(CH_STREAM_PTR,a4)   ; save inst data stream pointer
+    move.b  d0,d1
+    and.b   #$0f,d1
+    cmp.b   #$0e,d1
+    beq.b   .leave_read_event
+    cmp.b   #$0d,d1
+    beq.b   .l0ef2h
+	move.b  d0,(INST_OCTAVE_NOTE,a4)
+	bsr     snd_key_off
+	cmp.b   #$0c,d1
+    beq.b   .leave_read_event
+.l0ef2h
+	move.b  (INST_OCTAVE_NOTE,a4),d0 ; load note reg
+	move.b  d0,d1
+    lsr.b   #$4,d1
+    andi.b  #$07,d1
+    move.b  d1,(CH_OCTAVE,a4)   ; keep d1 for later
+    move.b  d0,d2
+    and.b   #$0f,d2
+    move.b  d2,d0
+    add.b   d2,d2
+    add.b   d0,d2   ; d2 has offset in note table
+    lea     (md_fm_freq_table,d2.w),a0
+    move.b  (a0)+,(INST_NOTE,a4)        ; save note from table to reg
+    move.b  (a0)+,d0    ; freq LSB
+    move.b  (a0)+,d2    ; freq MSB
+    lsl.w   #$8,d2
+    move.b  d0,d2
+    move.b  (CH_FINETUNE,d4),d0            ; read event byte
+    ext.w   d0
+    add.w   d0,d2       ; d2 has adjusted frequency
+    ror.w   #$5,d1      ; rotate octave to b14-11
+    or.w    d1,d2       ; d2 has adjsusted freq + octave
+    move.w  d2,(CH_FREQ,a4)
+    clr.w   (CH_VIB_DELTA,a4)
+    move.b  #$80,(CH_VIB_ACCUM,a4)
+    bclr.b  #$2,(INST_STATUS,a4)
+    move.b  (CH_CONFIG,a4),d1
+    ori.b   #$f0,d1     ; value to write to register
+    move.b  #$08,d0
+    bsr     write_opm
+.leave_read_event:
     rts
 
 ; Instrument command dispatch table (l00b2h_table equivalent)
@@ -2983,7 +3173,7 @@ ic_load_patch:
     move.b  #$ff,d1     ; reg value
     .update_ss_sl_reg:
         bsr     write_opm
-        add.b   #$4,d0      ; next operator
+        add.b   #$8,d0      ; next operator
         dbf     d7,.update_ss_sl_reg
     bsr     snd_write_fm_patch
     bsr     snd_inst_volume
@@ -3066,10 +3256,11 @@ ic_nop:
 
 ; --- $XF: stop channel (l0eb4h / sub_0eb5h) ---
 ic_stop:
+    addq.L  #4,SP    ; discard JSR return address
     bclr    #0,(INST_STATUS,a4)     ; clear active flag
     clr.b   (INST_PRIORITY,a4)      ; clear priority ($23)
-    bsr     snd_key_off             ; key-off OPM
-    rts
+    move.b  (INST_CH_INDEX,a4),d0
+    bra     snd_inst_ch_reset
 
 
 ; =============================================================================
@@ -3079,16 +3270,79 @@ ic_stop:
 ; =============================================================================
 
 snd_inst_pitch_update:
-    ; Check vibrato enable (INST_STATUS bit 1)
-    btst    #1,(INST_STATUS,a4)
-    beq.b   .ipu_done
-
-    ; Advance vibrato and update frequency
-    move.b  (CH_VIB_ACCUM,a4),d0
-    add.b   (CH_VIB_DELTA_LO,a4),d0
+    ; Check vibrato enable (INST_STATUS b1-0 set)
+    move.b  (INST_STATUS,a4),d0
+    move.b  d0,d1   ; save for later
+    cmpi.b  #$03,d0
+    bne.b   .ipu_done
+    move.b  (INST_DUR_VAR,a4),d0
+    lsl.b   #$1,d0
+    add.b   d0,(INST_VIB_CALC,a4)
+    bcc     .ipu_done
+    btst    #$2,d1
+	bne     .l0f98h		;0f5e
+    clr.w   d0
+    clr.w   d2
+    move.b  (INST_NOTE,a4),d2
+    move.b  (INST_VIB_PARAM,a4),d0
+    mulu.w  d2,d0
+    lsl.w   #$1,d0
+    move.w  d0,(INST_VIB_RESULT,a4)
+    move.b  (INST_VIB_PARAM2,a4),d0
+    mulu.w  d2,d0
+    lsl.w   #$1,d0
+    move.w  d0,(INST_VIB_RESULT2,a4)
+    bset    #$3,d1  ; set flag 3 in satus reg
+	move.b  (INST_DURATION2,a4),d0
+    btst    #$7,(INST_DUR_VAR,a4)
+    bne     .l0f8dh
+    bclr    #$3,d1  ; clear flag 3 in satus reg
+    move.b  (INST_DURATION1,a4),d0
+.l0f8dh:
+	lsr.b   #$1,d0
+	move.b  d0,(INST_VIB_SUBCOUNTER,a4)
+	move.b  #$80,(CH_VIB_ACCUM,a4)
+	bset    #$2,d1  ; set flag 2 in satus reg
+.l0f98h:
+    subq.b  #$1,(INST_VIB_SUBCOUNTER,a4)
+	beq     .l0fb0h
+	btst    #$3,d1
+    beq     .l0fa8h
+    bclr    #$3,d1  ; clear flag 3 in satus reg
+    move.b  (INST_DURATION1,a4),d0
+    bra     .l0fadh		;0fa6
+.l0fa8h:
+	bset    #$3,d1  ; set flag 3 in satus reg
+    move.b  (INST_DURATION2,a4),d0
+.l0fadh:
+	move.b  d0,(INST_VIB_SUBCOUNTER,a4)
+.l0fb0h:
+	move.b  d1,(INST_STATUS,a4)
+	btst    #$3,d1
+    bne     .l0fd9h
+    ; add CH_VIB_ACCUM to CH_VIB_DELTA
+	move.w  (INST_VIB_RESULT,a4),d0
+    moveq   #$0,d2
+    move.b  (CH_VIB_ACCUM,a4),d2
+    add.w   d2,d0
     move.b  d0,(CH_VIB_ACCUM,a4)
-    bsr     snd_write_frequency
-
+    and.w   #$ff00,d0
+    beq     .ipu_done
+    lsr.w   #$8,d0
+    add.w   d0,(CH_VIB_DELTA,a2)
+    bra     snd_write_frequency
+.l0fd9h:
+	; substract CH_VIB_ACCUM from
+	move.w  (INST_VIB_RESULT2,a4),d0
+    moveq   #$0,d2
+    move.b  (CH_VIB_ACCUM,a4),d2
+    sub.w   d2,d0
+    move.b  d0,(CH_VIB_ACCUM,a4)
+    and.w   #$ff00,d0
+    beq     .ipu_done
+    lsr.w   #$8,d0
+    sub.w   d0,(CH_VIB_DELTA,a2)
+	bra     snd_write_frequency
 .ipu_done:
     rts
 
@@ -3171,11 +3425,11 @@ snd_stop_all_inst:
     lea     (snd_inst_ch),a4
     moveq   #INST_CH_COUNT-1,d7
 .stop_loop:
-    btst    #0,(INST_STATUS,a4)
-    beq.b   .stop_next
     bclr    #0,(INST_STATUS,a4)
-    clr.b   (INST_PRIORITY,a4)
-    bsr     snd_key_off
+    beq.b   .stop_next
+    clr.b   (INST_PRIORITY,a4)      ; clear priority ($23)
+    move.b  (INST_CH_INDEX,a4),d0
+    bsr     snd_inst_ch_reset
 .stop_next:
     lea     (INST_CH_SIZE,a4),a4
     dbf     d7,.stop_loop
@@ -3380,9 +3634,10 @@ snd_expression:     ds.b    1       ; expression / velocity
 snd_update_flag:    ds.b    1       ; $FF=force track reload (mirrors l01c8h)
 snd_tempo_div:      ds.b    1       ; tempo divider counter (mirrors l1390h)
 snd_tempo_base:     ds.b    1       ; tempo base value (mirrors l1391h)
-snd_tempo_frac:     ds.b    1       ; fractional accumulator (mirrors l1391h+1)
-snd_tempo_ovf:      ds.b    1       ; overflow flag (mirrors l1391h+2)
+snd_tempo_frac:     ds.b    1       ; fractional accumulator (mirrors l1392h)
+snd_tempo_ovf:      ds.b    1       ; overflow flag (mirrors l1393h)
 snd_fade_flag:      ds.b    1       ; fade enable (mirrors l1394h)
+snd_fade_ovf:       ds.b    1       ; overflow fade flag (mirrors l1395h)
 snd_fade_accum:     ds.b    1       ; fade step accumulator (mirrors l1396h)
 snd_psg_mixer:      ds.b    1       ; global MIDI/PSG mixer state (mirrors l1397h)
 
@@ -3396,12 +3651,11 @@ snd_bank_base:      ds.l    2       ; absolute base address of bank 0 / bank 1
                                     ; to THIS, not to snd_track_ptr — the two are
                                     ; only equal for the very first track in a bank.
 snd_track_table:    ds.l    32      ; pointers to decompressed track data in RAM
-snd_arp_table:      ds.l    1       ; pointer to arpeggio pattern table in RAM
 snd_preset_ptrs:                    ; 4 pointers initialised in sub_0203h
 snd_fm_preset_ptr:  ds.l    1       ; FM preset table base
 snd_midi_preset_ptr: ds.l   1       ; MIDI/PSG preset table base
 snd_preset_ptr_002: ds.l    1       ;
-snd_preset_ptr_003: ds.l    1       ;
+snd_arp_ptr:        ds.l    1       ;
 
 ; --- Channel state blocks ---
 ; Music channels: MUSIC_CH_BASE equivalent
