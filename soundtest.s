@@ -461,6 +461,7 @@ print_track_info:
     rts
 
 
+
 ; =============================================================================
 ; command_loop
 ; =============================================================================
@@ -731,13 +732,13 @@ cmd_sfx:
     bsr     read_hex_byte
     tst.b   d0
     beq.b   .cancel
-    lea     str_triggering_sfx,a0
-    bsr     print_string
     moveq   #0,d1
     move.b  d0,d1
+    lea     str_triggering_sfx,a0
+    bsr     print_string
     bsr     print_hex_long_from_d1
-    bsr     print_new_line
-
+    bsr     print_new_line      ; erase d0
+    move.b  d1,d0
     jsr     snd_cmd_play_instrument
 .cancel:
     rts
@@ -749,13 +750,13 @@ cmd_instrument:
     bsr     read_hex_byte
     tst.b   d0
     beq.b   .cancel
+    moveq   #0,d1
+    move.b  d0,d1   ; store result into d0
     lea     str_triggering_inst,a0
     bsr     print_string
-    moveq   #0,d1
-    move.b  d0,d1
-    bsr     print_hex_long_from_d1
+    bsr     print_hex_long
     bsr     print_new_line
-
+    move.b  d1,d0
     jsr     snd_cmd_play_instrument
 .cancel:
     rts
