@@ -59,7 +59,8 @@
 
 MUSIC_BANK_SIZE     equ 32768       ; 32KB per bank
 MUSIC_FILE_SIZE     equ MUSIC_BANK_SIZE*2   ; 64KB total
-SFX_BUFFER_SIZE     equ $0C5D       ; SFX area size (Z80 $13A3-$1FFF equiv)
+SFX_BUFFER_SIZE     equ $2162   ; was $0C5D (Z80 $13A3-$1FFF equiv)but will
+   ;load everything in memory and use lookup table based on track
 
 OPEN_READ           equ 0
 
@@ -418,7 +419,7 @@ setup_driver_assets:
 .bank0_done:
 
     ; Bank 1 tracks → snd_track_table slots 16-31
-    lea     (snd_track_table+16*4),a2
+    lea     (snd_track_table+16*4),a2       ; TODO double where this comes from
     lea     (music_data+MUSIC_BANK_SIZE),a1
     move.w  (bank1_track_count),d7
     beq.b   .bank1_done
@@ -438,7 +439,7 @@ setup_driver_assets:
 
     ; SFX / instrument data pointer
     lea     (sfx_data),a0
-    move.l  a0,(snd_inst_table)
+    move.l  a0,(snd_inst_table_ptr)
     rts
 
 
