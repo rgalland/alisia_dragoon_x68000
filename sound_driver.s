@@ -125,18 +125,18 @@ OPM_KON_ALL         equ $78         ; all operators M1+M2+C1+C2
 ; directly, not from these F-number/block values (see snd_calc_frequency)
 ; =============================================================================
 md_fm_freq_table:
-    dc.b    $24,$83,$02     ; note 1  C
-    dc.b    $26,$aa,$02     ; note 2  C#
-    dc.b    $28,$d2,$02     ; note 3  D
-    dc.b    $2a,$fd,$02     ; note 4  D#
-    dc.b    $2d,$2b,$03     ; note 5  E
-    dc.b    $30,$5b,$03     ; note 6  F
-    dc.b    $33,$8e,$03     ; note 7  F#
-    dc.b    $36,$c4,$03     ; note 8  G
-    dc.b    $39,$fd,$03     ; note 9  G#
-    dc.b    $3c,$3a,$04     ; note 10 A
-    dc.b    $40,$7b,$04     ; note 11 A#
-    dc.b    $44,$bf,$04     ; note 12 B
+    dc.b    $24,$83,$02     ; note 1  C  $0283
+    dc.b    $26,$aa,$02     ; note 2  C# $02aa
+    dc.b    $28,$d2,$02     ; note 3  D  $02d2
+    dc.b    $2a,$fd,$02     ; note 4  D# $02fd
+    dc.b    $2d,$2b,$03     ; note 5  E  $032b
+    dc.b    $30,$5b,$03     ; note 6  F  $035b
+    dc.b    $33,$8e,$03     ; note 7  F# $038e
+    dc.b    $36,$c4,$03     ; note 8  G  $03c4
+    dc.b    $39,$fd,$03     ; note 9  G# $03fd
+    dc.b    $3c,$3a,$04     ; note 10 A  $043a
+    dc.b    $40,$7b,$04     ; note 11 A# $047b
+    dc.b    $44,$bf,$04     ; note 12 B  $04bf
 ; OPM KeyCode note-nibble table
 ; THis will need to be used instead of values from the table above
 ; =============================================================================
@@ -235,7 +235,6 @@ CH_DISABLE          equ $01     ; [B] ix+$01 — disable flag: non-zero
 ;CH_FREQ_HI          equ $03     ; [B] ix+$03 — frequency high byte
                                 ;   FM: OPM KeyFraction (bits 7-2, 6 bits)
                                 ;   MIDI: unused
-CH_FREQ             equ $02     ; big endian word to replace CH_FREQ_LO and CH_FREQ_HI
 CH_OCT_KC           equ $02     ; octave on 3 bits + key code on 4 bits, bit 7 not used
 CH_KEY_FRAC         equ $03     ; key fraction on 6 bits, bits 1-0 are used
 ;CH_VIB_DELTA_LO     equ $04     ; [B] ix+$04 — vibrato frequency delta low
@@ -271,7 +270,7 @@ CH_FLAGS            equ $17     ; [B?] ix+$17 — channel flags byte
                                 ;   bit 4: 0=add, 1=sub
                                 ;   bit 5: effects active
                                 ;   bit 6: vibrato enable
-                                ;   bit 7: 0=add, 1=sub
+                                ;   bit 7: vibrato dir, 0=add, 1=sub
 CH_DURATION         equ $18     ; [B?] ix+$18 — note duration counter
 CH_FX_FLAGS         equ $19     ; [B?] ix+$19 — envelope/effect flags
                                 ;   bit 0: note currently playing
@@ -294,10 +293,10 @@ CH_ARP_PARAMS       equ $23     ; [M] ix+$23 — arpeggio parameters, 6 bytes
 CH_ARP_NOTE         equ $23     ; [M] ix+$23 — arpeggio note
 CH_ARP_MUL_ADD      equ $24     ; [M] ix+$24 — arp multiplier 1 for positive arp
 CH_ARP_MUL_SUB      equ $25     ; [M] ix+$25 — arp multiplier 2 for negative arp
-CH_ARP_M3           equ $26     ; [M] ix+$26 — arp multiplier 3
-CH_ARP_M4           equ $27     ; [M] ix+$27 — arp multiplier 4
-CH_ARP_FLAGS        equ $28     ; [M] ix+$28 — arpeggio flags - bit7=pos/neg?
-CH_ARP_CTR          equ $29     ; [M] ix+$29 — arpeggio counter
+CH_VIB_SPEED1       equ $26     ; [M] ix+$26 — vibrato speed 1
+CH_VIB_SPEED2       equ $27     ; [M] ix+$27 — vibrato speed 2
+CH_VIB_FLAGS        equ $28     ; [M] ix+$28 — vibrato flags: bit 7=speed select, bits 4-0=octave,notes
+CH_VIB_CTR          equ $29     ; [M] ix+$29 — arpeggio counter
 CH_ARP_PARAMS2      equ $2A     ; [M] ix+$2A — arpeggio parameters 2, 5 bytes
 CH_ARP_CTR_INIT2    equ $2A     ; [M] ix+$2A — arpeggio counter initialiser
 CH_ARP_DEPTH        equ $2B     ; [M] ix+$2B — arpeggio depth parameter
@@ -307,10 +306,12 @@ CH_ARP_FLAGS2       equ $2E     ; [M] ix+$2E — panning + direction
                                 ;   bit 6: arpeggio direction
                                 ;   bit 7: arpeggio invert
 CH_ARP_CTR2         equ $2F     ; [M] ix+$2F — arpeggio counter 2
+
 CH_PORT_SPEED       equ $30     ; [M] ix+$30 — portamento speed
-CH_PORT_TARGET      equ $31     ; [M] ix+$31 — portamento target
+CH_PORT_FLG_PMS_AMS equ $31     ; [M] ix+$31 — portamento target
 CH_PORT_BASE        equ $32     ; [M] ix+$32 — portamento base (copy of speed)
-CH_FM_AMS_PMS       equ $33     ; [M] ix+$33 —
+
+CH_FM_AMS_PMS       equ $33     ; [M] ix+$33 — ams and pms values
 CH_MIDI_MIXER       equ $34     ; [M] ix+$34 — MIDI pan / FM algorithm cache
 CH_MIDI_SPEED       equ $35     ; [M] ix+$35 — MIDI portamento speed
                                 ; (last byte of the original 54-byte
@@ -379,6 +380,28 @@ PRESET_COUNT        equ 4       ; presets stored after the 9 channel indices
 psg_noise_table:
     dc.b    $04,$04,$04,$04,$05,$05,$05,$05
     dc.b    $06,$06,$06,$06
+
+; Preset structure — 37 bytes total
+; Offset  Size  Field                   Driver usage
+; ------  ----  -----                   ------------
+;  0       1    Vibrato param byte      snd_load_preset → d1 → ecmd_E2_arp_params
+;  1       5    Vibrato data (5 bytes)  ecmd_E2_arp_params reads (a5)+ × 5
+;                                        → CH_ARP_PARAMS[0..5] = {note, mul_add,
+;                                          mul_sub, m3, m4, flags}
+;  6       1    Portamento speed        snd_load_preset → d1 → set_portgt
+;  7       1    Portamento extra        set_portgt reads (a5)+ → CH_PORT_*
+; --- patch data (29 bytes) ---
+;  8       4    DT1/MUL (M1,M2,C1,C2)  snd_write_fm_patch → OPM $40+
+; 12       4    TL (M1,M2,C1,C2)       snd_write_fm_patch → OPM $60+
+;                                        also snd_write_tl_opm reads from
+;                                        CH_PRESET_PTR+12 (offset $8 into patch)
+; 16       4    KS/AR                   → OPM $80+
+; 20       4    AME/D1R                 → OPM $A0+
+; 24       4    DT2/D2R                 → OPM $C0+
+; 28       4    D1L/RR                  → OPM $E0+
+; 32       4    SSG-EG                  skipped (adda #4,a3)
+; 36       1    FB/ALGO                 → OPM $20+ (with L/R bits ORed in)
+;
 
 ; =============================================================================
 ; Code section
@@ -1417,12 +1440,12 @@ snd_opm_calc_freq:  ; TODO make sure freq reg contains octave, note, fraction
     move.b  (a0,d0.w),d1
     ; MIDI note = (octave + 1) * 12 + semitone_offset
     ; Octave 0-7 + offset gives MIDI notes 12-107 (C1-B7)
+    moveq   #0,d2
     move.b  (CH_OCTAVE,a4),d2
     addq.b  #1,d2
     mulu.w  #12,d2
     add.b   d1,d2
-    andi.w  #$00ff,d2
-    move.w  d2,(CH_FREQ,a4)
+    move.w  d2,(CH_OCT_KC,a4)   ; wrong name for MIDI
     rts
 
 
@@ -1452,9 +1475,8 @@ snd_opn2_calc_frequency: ;
     lsl.w   #8,d4               ; move to MSB
     lsl.w   #3,d4               ; left shift by 3 again
     or.w    d4,d2               ; d2 = result
-    move.w  d2,(CH_FREQ,a4)     ; store result
+    ;move.w  d2,(CH_FREQ,a4)     ; store result
     rts
-
 .snd_calc_midi_freq:
     ; --- MIDI/PSG path ---
     andi.w  #$000f,d0
@@ -1470,7 +1492,7 @@ snd_opn2_calc_frequency: ;
     mulu.w  #12,d2
     add.b   d1,d2
     andi.w  #$00ff,d2
-    move.w  d2,(CH_FREQ,a4)
+    ;move.w  d2,(CH_FREQ,a4)
     rts
 
 
@@ -1631,7 +1653,7 @@ snd_midi_key_on:
     and.b   #$7f,d2
 
     ; Store note and send note-on
-    move.w  (CH_FREQ,a4),d1
+    move.b  (CH_OCT_KC,a4),d1
     move.b  d1,(a2,d0.w)
     bsr     midi_note_on
     movem.l (SP)+,a2    
@@ -1707,7 +1729,7 @@ snd_write_tl_opm:
     add.b   #OPM_TL,d0          ; + $60 = TL register address
     ; Write 4 operators from preset TL location
     lea     ($4,a2),a2           ; TL value for this operator
-    moveq   #3,d7               ; loop counter (4 operators)
+    moveq   #(4-1),d7               ; loop counter (4 operators)
 .tl_loop:
     ; Read base TL from preset data
     move.b  (a2)+,d1            ; TL value for this operator
@@ -1912,6 +1934,12 @@ snd_apply_effects:
     bsr     snd_apply_arpeggio
     rts
 
+snd_calc_vibrato:
+
+
+
+
+
 
 ; =============================================================================
 ; save_and_write_opm_panning_ch
@@ -1974,15 +2002,15 @@ write_opm_panning:
 
 snd_apply_portamento:
     btst.b  #5,(CH_CONFIG,a4)
-    bne.b   .port_done  ; for PSG
+    bne.b   .psg_port  ; for PSG
 
-    btst.b  #7,(CH_PORT_TARGET,a4)               ; bit 7 = direction flag (set by $EC command)
+    btst.b  #7,(CH_PORT_FLG_PMS_AMS,a4)               ; bit 7 = direction flag (set by $EC command)
     beq.b   .port_down
     subq.b  #$1,(CH_PORT_BASE,a4)
     bne.b   .port_down
     move.b  (CH_FM_LR_FB_ALGO,a4),d0
     andi.b  #$c0,d0
-    move.b  (CH_PORT_TARGET,a4),d1
+    move.b  (CH_PORT_FLG_PMS_AMS,a4),d1
     andi.b  #$3f,d1     ; AMS PMS
     or.b    d0,d1       ; add LR
     ; update OPM pan register
@@ -2017,7 +2045,9 @@ snd_apply_portamento:
     move.b  (CH_FM_AMS_PMS,a4),d1
     andi.b  #$3f,d1
     or.b    d0,d1
-    bsr     save_and_write_opm_panning_ch
+    bsr     save_and_write_opm_panning_ch   ; don't forget add bra once psg is implemented
+.psg_port:
+    ; TODO PSG part here
 .port_done:
     rts
 
@@ -2047,7 +2077,7 @@ snd_apply_arpeggio:
     andi.b  #$1f,d0
     move.b  d0,(CH_ARP_CTR2,a4)
     ; dec arp counter 2
-    subq.b  #1,(CH_ARP_CTR,a4)
+    subq.b  #1,(CH_VIB_CTR,a4)
     bne.b   .l09a2h
 	btst    #$5,d1
 	bne     .l098fh
@@ -2055,7 +2085,7 @@ snd_apply_arpeggio:
     move.b  d2,(CH_FLAGS,a4)
     bra     .l09aah
 .l098fh:
-    move.b  (CH_ARP_CTR_INIT,a4),(CH_ARP_CTR,a4)
+    move.b  (CH_ARP_CTR_INIT,a4),(CH_VIB_CTR,a4)
     eor.b   #$20,d2
     btst    #5,d2
     bne     .l099eh       ; and skip next if set
@@ -2107,32 +2137,32 @@ snd_apply_arpeggio:
     move.w  d1,(CH_ARP_ADD,a4)
  .l0a09h:
 	bset    #7,d2
-    move.b  (CH_ARP_M4,a4),d0
-    btst.b  #7,(CH_ARP_FLAGS,a4)
+    move.b  (CH_VIB_SPEED2,a4),d0
+    btst.b  #7,(CH_VIB_FLAGS,a4)    ; test direction
     bne     .l0a19h
 	bclr    #7,d2
-    move.b  (CH_ARP_M3,a4),d0
+    move.b  (CH_VIB_SPEED1,a4),d0
 .l0a19h:
     lsr.b   #1,d0
-    move.b  d0,(CH_ARP_CTR,a4)
+    move.b  d0,(CH_VIB_CTR,a4)
     move.b  #$80,(CH_VIB_ACCUM,a4)
 	bset.b  #1,(CH_FX_FLAGS,a4)
 .l0a26h:
-	move.b  (CH_ARP_FLAGS,a4),d0
-    andi.b  #$1f,d0
+	move.b  (CH_VIB_FLAGS,a4),d0    ; copy flags to d0
+    andi.b  #$1f,d0                 ; note and only 1 bit for octave? Is vib+-2 octaves?
     move.b  d0,(CH_NOTE_REG,a4)
-    subq.b  #1,(CH_ARP_CTR,a4)
+    subq.b  #1,(CH_VIB_CTR,a4)
     bne     .l0a46h
 	btst    #7,d2
 	beq     .l0a3eh
 	bclr    #7,d2
-	move.b  (CH_ARP_M3,a4),d0
+	move.b  (CH_VIB_SPEED1,a4),d0
     bra     .l0a43h
 .l0a3eh:
 	bset    #7,d2
-    move.b  (CH_ARP_M4,a4),d0
+    move.b  (CH_VIB_SPEED2,a4),d0
 .l0a43h:
-	move.b  d0,(CH_ARP_CTR,a4)
+	move.b  d0,(CH_VIB_CTR,a4)
 .l0a46h:
 	move.b  d2,(CH_FLAGS,a4)
 	btst    #7,d2
@@ -2206,7 +2236,7 @@ snd_force_arp_setup:
     addq.w  #1,d3
 .no_round_carry:
 
-    btst.b  #7,(CH_ARP_FLAGS2,a4)    ; bit 7,(ix+$2e) — invert flag
+    btst.b  #7,(CH_ARP_FLAGS2,a4)    ; test dir flag
     beq.b   .no_invert
     neg.w   d3                      ; negate for inverted vibrato
 .no_invert:
@@ -2223,7 +2253,7 @@ snd_force_arp_setup:
 
     ; Initialise arpeggio counters
     move.b  (CH_ARP_CTR_INIT2,a4),(CH_ARP_CTR2,a4)
-    move.b  (CH_ARP_CTR_INIT,a4),(CH_ARP_CTR,a4)
+    move.b  (CH_ARP_CTR_INIT,a4),(CH_VIB_CTR,a4)
 
     bset.b  #5,(CH_FLAGS,a4)        ; set arpeggio active flag
 .no_vib_arp_setup
@@ -2762,7 +2792,7 @@ ecmd_EB_port:
     btst.b  #5,(CH_CONFIG,a4)   ; MIDI: ignore portamento
     bne.b   .eb_done
     bset.b  #1,(CH_FLAGS,a4)
-    move.b  d1,(CH_PORT_SPEED,a4)
+    move.b  d1,(CH_PORT_SPEED,a4)   ; TODO registers are different for PSG
     move.b  d1,(CH_MIDI_SPEED,a4)
 .eb_done:
     rts
@@ -2773,13 +2803,13 @@ ecmd_EC_portgt:
     bne.b   ec_midi
 set_portgt:
     ; FM portamento target
-    clr.b   (CH_PORT_TARGET,a4)
+    clr.b   (CH_PORT_FLG_PMS_AMS,a4)
     tst.b   d1
     beq.b   ec_done
     move.b  d1,(CH_PORT_SPEED,a4)
     move.b  (a5)+,d1            ; read third byte
     bset    #7,d1               ; set direction flag
-    move.b  d1,(CH_PORT_TARGET,a4)
+    move.b  d1,(CH_PORT_FLG_PMS_AMS,a4)
     btst.b  #0,(CH_FX_FLAGS,a4)
     beq.b   ec_done
     bsr     snd_write_panning
@@ -3384,25 +3414,30 @@ snd_inst_read_event:
 
 ; --- $X1/$X2/$X3: panning from command bits (l0e06h) ---
 ; Panning encoded in upper nibble of command byte × 4, bits 7-6 result
-.ic_pan_cmd:    ; TODO add FB and CON to OPM_LR_FB_CON value
+.ic_pan_cmd:
     suba    #$1,a5  ; unconsume last fetched byte
     lsl.b   #$2,d0
     andi.b  #$c0,d0
-    andi.b  #$3f,(INST_STATUS,a4)
-    or.b    d0,(INST_STATUS,a4)
-    move.b  d0,d1   ; save d0 to d1 to write value to opm register
+    move.b  (INST_STATUS,a4),d2
+    andi.b  #$3f,d2
+    move.b  d2,d1   ; value to be written to PMS AMS
+    or.b    d0,d2
+    move.b  d2,(INST_STATUS,a4)
+    move.b  d0,d2   ; save LR value for the second register to updatel
     ; Writing to OPM is done in 2 stages to match OPN2:
-    ; 1) first, use LR from d0 bit7-6 and add FB + CH_FM_ALGO + CONFIGFB_CON to $20+ch
-    move.b  (CH_FM_LR_FB_ALGO,a4),d2
-
-    move.b  (CH_CONFIG,a4),d0
-    add.b   #OPM_LR_FB_CON,d0
-    bsr     write_opm
-    ; 2) clear AMS_PMS
-    clr     d1
-    move.b  (CH_CONFIG,a4),d0
-    and.b   #$07,d0
+    ; 1) write to AMS_PMS
+    ror.b   #$4,d1
+    move.b  (CH_CONFIG,a4),d3
+    and.b   #$07,d3
+    move.b  d3,d0   ; d3 will be resued for the second register
     add.b   #OPM_PMS_AMS,d0
+    bsr     write_opm
+    ; 2) use LR from d0 bit7-6 and add FB + CH_FM_ALGO + CONFIGFB_CON to $20+ch
+    move.b  (CH_FM_LR_FB_ALGO,a4),d1
+    andi.b  #$3f,d1
+    or.b    d2,d1   ; add LR
+    move.b  d3,d0   ; d3 will be resued for the second register
+    add.b   #OPM_LR_FB_CON,d0
     bsr     write_opm
     rts
 
@@ -3412,7 +3447,7 @@ snd_inst_read_event:
     move.l  d7,-(sp)
     moveq   #0,d0
     move.b  d1,d0   ; save second byte to d0
-    mulu.w  #29,d0  ; patch length
+    mulu.w  #29,d0  ; sfx patch length
     movea.l (snd_inst_table_ptr),a3 ; get sfx data base pointer
     move.b  ($0,a3),d2
     move.b  ($1,a3),d1
@@ -3461,6 +3496,7 @@ snd_inst_read_event:
 ; --- $X6: load vibrato data (l0e62h) ---
 ; Copy 5 bytes from stream to instrument channel block at +$15
 .ic_load_vib:
+    suba    #$1,a5  ; unconsume last fetched byte
     bset.b  #1,(INST_STATUS,a4)
     lea     (INST_VIB_PARAMS,a4),a1
     REPT 5
@@ -3496,7 +3532,7 @@ snd_inst_read_event:
 ; --- $XA: expression from snd_expression (l0ea6h) ---
 .ic_expr_from_reg:
     suba    #$1,a5  ; unconsume last fetched byte
-    move.b  (snd_expression),(CH_PORT_TARGET,a4)    ; ix+$1e
+    move.b  (snd_expression),(INST_VOL_VAR,a4)
     rts
 
 ; --- $XB: set fine-tune (l0eaeh) ---
