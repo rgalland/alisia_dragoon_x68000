@@ -324,9 +324,9 @@ load_sfx_file:
     bmi.b   .open_error
     move.l  d0,(file_sfx)
 
-    move.l  d0,d1
-    lea     (sfx_data),a0
-    move.l  #SFX_BUFFER_SIZE,d2
+    move.l  d0,d1               ; handle
+    lea     (sfx_data),a0       ; RAM dest
+    move.l  #SFX_BUFFER_SIZE,d2 ; length
     DOS_READ_FILE
     ; short read is fine for SFX
 
