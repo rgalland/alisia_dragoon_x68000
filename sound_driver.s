@@ -267,14 +267,14 @@ CH_FX_FLAGS         equ $19     ; [B?] ix+$19 — envelope/effect flags
                                 ;   bits 7-6: LR
 CH_FX_DURATION      equ $1A     ; [B?] ix+$1A — portamento threshold
 ; Orginal registers $1B to $1C replaced to use long word pointer
-CH_NOTE_REG         equ $1D     ; [B] ix+$1D — note register (b6-4=OCTAVE,b3-0=NOTE / vibrato base)
+CH_VIB_CTR          equ $1D     ; [B] ix+$1D — needs a new name
 ; Orginal registers $1E to $1F replaced to use long word pointer
 CH_VIB_STEP_UP      equ $1E     ; [M] ix+$1E/ix+$1F — vibrato upward step (computed: BASE_NOTE × MUL_UP)
 ; Orginal registers $20 to $21 replaced to use long word pointer
 CH_VIB_STEP_DOWN    equ $20     ; [M] ix+$20/ix+$21 — vibrato downward step (computed: BASE_NOTE × MUL_DOWN)
 CH_VIB_BASE         equ $22     ; [M] ix+$22 — frequency table index for effects
 CH_VIB_PARAMS       equ $23     ; [M] ix+$23 — vibrato parameter block, 6 bytes ($E2 command / preset byte 0)
-CH_VIB_RATE         equ $23     ; [M] ix+$23 — vibrato rate divisor (reloads CH_NOTE_REG)
+CH_VIB_RATE         equ $23     ; [M] ix+$23 — vibrato rate divisor (reloads CH_VIB_CTR)
 CH_VIB_MUL_UP       equ $24     ; [M] ix+$24 — vibrato upward step multiplier
 CH_VIB_MUL_DOWN     equ $25     ; [M] ix+$25 — vibrato downward step multiplier
 CH_VIB_TICKS_UP     equ $26     ; [M] ix+$26 — vibrato up-stroke tick count (reloads CH_VIB_DIR_CTR)
@@ -292,7 +292,7 @@ CH_ARP_INNER_INIT   equ $2D     ; [M] ix+$2D — arpeggio inner counter reload v
 CH_VIB_DIR_FLAGS    equ $2E     ; [M] ix+$2E — arpeggio direction flags
                                 ;   bit 6: arpeggio direction
                                 ;   bit 7: arpeggio invert
-CH_VIB_RATE_CTR     equ $2F     ; [M] ix+$2F — vibrato rate counter (counts down to CH_VIB_RATE, drives CH_NOTE_REG)
+CH_VIB_RATE_CTR     equ $2F     ; [M] ix+$2F — vibrato rate counter (counts down to CH_VIB_RATE, drives CH_VIB_CTR)
 CH_PORT_TARGET:     equ $30     ; portamento target frequency low byte
 CH_PORT_FLAGS:      equ $31     ; FM: portamento dir flag (bit 7) + PMS/AMS; PSG: freq high bits
 CH_PORT_PSG:        equ $31     ; PSG alias for CH_PORT_FLAGS — freq high bits
@@ -1053,7 +1053,7 @@ snd_process_samples:
     ; Temporarily clear disable flag and write TL=$7F to all operators
     move.b  (CH_DISABLE,a4),-(sp)
     clr.b   (CH_DISABLE,a4)
-    movea   (CH_PRESET_PTR,a4),a3   ; like load_music_preset_ptr_to_iy in Z80 code
+    movea.l (CH_PRESET_PTR,a4),a3   ; like load_music_preset_ptr_to_iy in Z80 code
     adda.w  #$8,a3                  ; data source
     move.b  #$7F,d4                 ; e=$7F in original = max attenuation
     bsr     snd_write_tl_opm        ; silence all operators
@@ -1289,7 +1289,7 @@ snd_read_event:
     bne.b   .note_no_keyon     ; suppressed while sfx is playing but update freq nonetheless
 
     ; Initialise vid and arp state
-    move.b  (CH_VIB_RATE,a4),(CH_NOTE_REG,a4)
+    move.b  (CH_VIB_RATE,a4),(CH_VIB_CTR,a4)
     clr.w   (CH_VIB_DELTA,a4)
     move.b  #$80,(CH_VIB_ACCUM,a4)
 
@@ -1724,7 +1724,7 @@ snd_sfx_ch_reset:     ;  $108f:
     bne     .reset_done
     tst.l   (CH_PRESET_PTR,a4)  ; could be done as 3rd check instead
     beq     .reset_done
-    movea   (CH_PRESET_PTR,a4),a3
+    movea.l (CH_PRESET_PTR,a4),a3
     adda.w  #$8,a3  ; point at FM operator data
     bsr     snd_write_fm_patch
     bsr     snd_calc_combined_volume
@@ -1738,9 +1738,10 @@ snd_sfx_ch_reset:     ;  $108f:
 ; Equivalent of sub_08afh volume calculation
 ; a4 = channel block
 ; Returns: d4.b = combined TL offset
+; clobbers a3
 ; =============================================================================
 snd_calc_combined_volume:
-    movea   (CH_PRESET_PTR,a4),a3   ; like load_music_preset_ptr_to_iy in Z80 code
+    movea.l (CH_PRESET_PTR,a4),a3   ; like load_music_preset_ptr_to_iy in Z80 code
     adda.w  #$8,a3                  ; preset FM patch data skipping first 8 bytes
     move.b  (snd_vol_accum),d4
     lsr.b   #1,d4                   ; global >> 1 (half resolution for smooth fade)
@@ -2034,7 +2035,7 @@ snd_apply_arpeggio:
 .vib_rate_tick:
 	btst    #6,d2
     beq     .vib_arp_done
-    subq.b  #1,(CH_NOTE_REG,a4)
+    subq.b  #1,(CH_VIB_CTR,a4)
     bne     .vib_arp_done
     btst.b  #$1,(CH_FX_FLAGS,a4)
     bne     .vib_ctr_reload		;09b5
@@ -2085,7 +2086,7 @@ snd_apply_arpeggio:
 .vib_ctr_reload:
 	move.b  (CH_VIB_FLAGS,a4),d0
     andi.b  #$1f,d0
-    move.b  d0,(CH_NOTE_REG,a4)
+    move.b  d0,(CH_VIB_CTR,a4)
     subq.b  #1,(CH_VIB_DIR_CTR,a4)
     bne     .vib_ctr_done
 	btst    #7,d2
@@ -2143,17 +2144,17 @@ snd_force_arp_setup:
 
     ; STEP = BASE_NOTE * ARP_INTERVAL
     moveq   #0,d0
-    move.b  (CH_VIB_BASE,a4),d0        ; d0 = VIB_BASE
+    move.b  (CH_VIB_BASE,a4),d0         ; d0 = VIB_BASE (1-12)
     moveq   #0,d1
     move.b  (CH_ARP_INTERVAL,a4),d1     ; is this using chromatic interval?
-    mulu.w  d1,d0                       ; d0 = end note
+    mulu.w  d1,d0                       ; d0 = VIB_BASE (1-12) * CH_ARP_INTERVAL
     move.w  d0,(CH_VIB_STEP_UP,a4)      ; save target
     move.w  d0,(CH_VIB_STEP_DOWN,a4)    ; save target
 
-    ; Depth calculation: CH_VIB_DELTA = round(BASE_NOTE * DEPTH)
+    ; Depth calculation: CH_VIB_DELTA = round(CH_VIB_BASE * DEPTH)
     ; Z80: de = high(STEP_LO * DEPTH) + BASE_NOTE * DEPTH + rounding_carry
     moveq   #0,d1
-    move.b  (CH_ARP_DEPTH,a4),d1       ; d1 = DEPTH
+    move.b  (CH_ARP_DEPTH,a4),d1        ; d1 = DEPTH
 
     ; STEP_LO * DEPTH (for accumulator init and fractional correction)
     moveq   #0,d2
@@ -2171,8 +2172,8 @@ snd_force_arp_setup:
     add.w   d4,d3                       ; d3 = depth result (pre-rounding)
 
     ; Rounding via accumulator: accum = (STEP_LO * DEPTH) & $FF, add $80
-    move.b  d2,(CH_VIB_ACCUM,a4)       ; store low byte of STEP_LO * DEPTH
-    addi.b  #$80,(CH_VIB_ACCUM,a4)     ; add $80 — sets carry if low byte >= $80
+    move.b  d2,(CH_VIB_ACCUM,a4)        ; store low byte of STEP_LO * DEPTH
+    addi.b  #$80,(CH_VIB_ACCUM,a4)      ; add $80 — sets carry if low byte >= $80
     bcc.b   .vib_no_round
     addq.w  #1,d3                       ; rounding carry into depth result
 .vib_no_round:
@@ -3317,7 +3318,7 @@ snd_sfx_read_event:
 ; a4 = channel block
 ; =============================================================================
 .snd_sfx_volume:
-	movea   (SFX_PRESET_PTR,a4),a3 ; preset data source
+	movea.l (SFX_PRESET_PTR,a4),a3 ; preset data source
 	move.b  (SFX_VOL_VAR,a4),d4
     add.b   (CH_VOLUME,a4),d4   ; + channel volume
     cmp.b   #$7F,d4
@@ -3463,7 +3464,7 @@ snd_sfx_pitch_update:
 .no_sub_carry:
     lsr.w   #6,d0                       ; d0 = saved as key fraction to match OPM KC/KF
     beq     .ipu_done
-    sub.w   d0,(CH_VIB_DELTA,a4)
+    sub.w   d0,(CH_VIB_DELTA,a4)        ; sub key fraction
     bra     snd_write_frequency
 .ipu_done:
     rts
