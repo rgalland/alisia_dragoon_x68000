@@ -439,7 +439,7 @@ setup_driver_assets:
 
     ; SFX / instrument data pointer
     lea     (sfx_data),a0
-    move.l  a0,(snd_inst_table_ptr)
+    move.l  a0,(snd_sfx_table_ptr)
     rts
 
 
