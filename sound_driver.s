@@ -1113,7 +1113,7 @@ snd_process_samples:
     moveq   #MIDI_MUSIC_COUNT-1,d7
     moveq   #MIDI_PSG0,d6
 .midi_volume:
-    bsr     snd_calc_combined_volume
+    ;bsr     snd_calc_combined_volume   ; disabled for now
     move.b  d4,d2
     eori.b  #$ff,d2
     andi.b  #$7f,d2
@@ -1211,7 +1211,7 @@ snd_channel_tick:
     ; --- Check portamento threshold (mirrors cp (ix+$1A)) ---
     move.b  (CH_FX_DURATION,a4),d0
     cmp.b   (CH_DURATION,a4),d0
-    bhi     .seq_check_fade
+    bcs     .seq_check_fade
     ; --- Check sustain flag (mirrors bit 4,(ix+$19)) ---
     btst.b  #4,(CH_FX_FLAGS,a4)
     bne     .seq_check_fade
@@ -1442,7 +1442,6 @@ snd_opm_calc_freq:
     rts
 .freq_midi_path
     ; --- MIDI/PSG path ---
-    subq.b  #1,d0                ; base-0 (0-11)
     ; Look up chromatic semitone offset
     lea     midi_note_offset,a0
     moveq   #0,d1
@@ -1568,20 +1567,41 @@ snd_write_frequency:
     btst.b  #5,(CH_CONFIG,a4)
     bne     .freq_done            ; MIDI: note stored in CH_FREQ, sent at key-on
 
-    bsr     snd_apply_vibrato
-    ; --- OPM path ---
-    move.b  (CH_CONFIG,a4),d2
-    and.b   #$07,d2             ; OPM channel 0-7
+    move.b  (CH_OCT_KC,a4),d0
+    move.b  (CH_KEY_FRAC,a4),d1
+    moveq   #$0,d2               ; as it will be used as word later on
+    move.b  d1,d2                ; d2 = base KeyFraction (0-63)
+    move.b  d0,d4                ; d4 = base KeyCode
+    lsr.b   #4,d4                ; d4 = base octave
+    move.b  d0,d5
+    andi.w  #$000f,d5            ; d5 = base note nibble (with gaps)
+    bsr     snd_note_nibble_to_index   ; d5(nibble) -> d5(0-11 index)
+
+    ; CH_VIB_DELTA is in raw units; scale to bits-7-2 space before adding
+    move.w  (CH_VIB_DELTA,a4),d1
+    lsl.w   #2,d1                  ; scale delta to bits 7-2 space
+    move.w  d1,d3
+    asr.w   #8,d3                  ; d3 = semitone carry (256 units/semitone)
+    add.w   d2,d1                  ; fold base KF into scaled delta
+    move.w  d1,d2
+    asr.w   #8,d2                  ; extra carry from addition
+    add.w   d2,d3                  ; d3 = total semitone carry
+    move.w  d1,d2
+    andi.w  #$00fc,d2              ; d2 = fraction in bits 7-2 format (mask low 2 bits)
+
+    add.w   d3,d5
+    bsr     snd_wrap_keycode       ; d5,d4 -> d1 = new KeyCode
+
+    move.b  (CH_CONFIG,a4),d3
+    and.b   #$07,d3
     ; Write KeyCode first ($28+ch) — equivalent of writing $A4 on YM2612
-    move.b  d2,d0
+    move.b  d3,d0
     add.b   #OPM_KC,d0          ; register $28 + channel
-    move.b  (CH_OCT_KC,a4),d1     ; for testing
     bsr     write_opm_ch
     ; Write KeyFraction second ($30+ch) — equivalent of writing $A0 on YM2612
-    move.b  d2,d0
+    move.b  d3,d0
     add.b   #OPM_KF,d0          ; register $30 + channel
-    ;move.w  d3,d1               ; d3 = KeyFraction (low byte) for second reg
-    move.b  (CH_KEY_FRAC,a4),d1     ; for testing
+    move.b  d2,d1               ; d3 = KeyFraction (low byte) for second reg
     bsr     write_opm_ch
 
 .freq_done:
@@ -1595,7 +1615,7 @@ snd_write_panning:  ; was a macro in the Z80 code
     ; Write panning/LFO ($38+ch) — equivalent of $B4+ch on YM2612 - ($073a)
     move.b  (CH_PORT_TARGET,a4),(CH_PORT_BASE_CTR,a4)
     move.b  (CH_LR_AMS_PMS,a4),d1
-    andi.b  #$c0,d1 ; LR is retained in CH_FM_LR_FB_ALGO
+    andi.b  #$c0,d1 ; only retain LR
     bsr     save_lr_ams_pms_write_opm_ch
 .pan_done:
     rts
@@ -1737,7 +1757,7 @@ snd_write_tl_opm:
     ; Read base TL from preset data
     move.b  (a3)+,d1            ; TL value for this operator
     btst    d7,d3               ; test operator attenuation bit
-    bne     .tl_write           ; set → modulator, otherwise use TL unchanged
+    beq     .tl_write           ; set → modulator, otherwise use TL unchanged
     add.b   d4,d1
     bpl.b   .tl_write
     move.b  #$7F,d1             ; clamp at max attenuation
@@ -1770,7 +1790,7 @@ snd_inst_ch_reset:     ;  $108f:
     move.w  #(24-1),d7      ; 24 operators from $40-$ff
 .reset_op_loop
     bsr     write_opm_ch
-    addq.b  #$8,d2
+    addq.b  #$8,d0
     dbf     d7,.reset_op_loop
 
     ; test pointer is present
@@ -2159,33 +2179,27 @@ snd_apply_arpeggio:
 	btst    #7,d2
     bne     .vib_sub
 .vib_add:
-    move.w  (CH_VIB_STEP_UP,a4),d0     ; d0 = step (hi byte in d0.b high, lo in d0.b low)
-    moveq   #0,d2
-    move.b  (CH_VIB_ACCUM,a4),d2       ; d2 = accum (zero-extended)
-    add.b   d0,d2                       ; accum += step_lo (byte add, carry in flag)
-    move.b  d2,(CH_VIB_ACCUM,a4)
-    lsr.w   #8,d0               ; d0.b = step_hi (upper byte, zero-extended)
+    move.w  (CH_VIB_STEP_UP,a4),d0
+    add.b   d0,(CH_VIB_ACCUM,a4)
     bcc.b   .no_add_carry
-    addq.w  #1,d0               ; add carry from accum add
+    addi.w  #$100,d0               ; add carry from accum add
 .no_add_carry:
+    lsr.w   #$8,d0
     beq     .vib_arp_done               ; if step_hi + carry = 0, done
     add.w   d0,(CH_VIB_DELTA,a4)        ; delta += step_hi (only the high byte carry)
-    bsr     snd_write_frequency
-    bra     .vib_arp_done
+    bra     .write_new_freq
 .vib_sub:
     move.w  (CH_VIB_STEP_DOWN,a4),d0
-    moveq   #0,d2
-    move.b  (CH_VIB_ACCUM,a4),d2
-    sub.b   d0,d2                       ; accum -= step_lo
-    move.b  d2,(CH_VIB_ACCUM,a4)
-    lsr.w   #8,d0               ; d0.b = step_hi (upper byte, zero-extended)
+    sub.b   d0,(CH_VIB_ACCUM,a4)
     bcc.b   .no_sub_carry
-    addq.w  #1,d0               ; add carry from accum add
+    addi.w  #$100,d0               ; add carry from accum add
 .no_sub_carry:
-    beq     .vib_arp_done
-    sub.w   d0,(CH_VIB_DELTA,a4)
+    lsr.w   #$8,d0
+    beq     .vib_arp_done               ; if step_hi + carry = 0, done
+    sub.w   d0,(CH_VIB_DELTA,a4)        ; delta += step_hi (only the high byte carry)
+.write_new_freq
     bsr     snd_write_frequency
-    bra     .vib_arp_done
+    ;bra     .vib_arp_done
 .vib_arp_done:
     move.l  (sp)+,d0
     rts
@@ -2216,18 +2230,18 @@ snd_force_arp_setup:
 
     ; vib_delta = round(arp_step1 * CH_ARP_DEPTH / 256)
     moveq   #0,d1
-    move.b  (CH_ARP_DEPTH,a4),d1
+    move.b  (CH_ARP_DEPTH,a4),d1    ; TODO verify this calculation
     mulu.w  d1,d0                   ; d0 = arp_step1 * vib_depth (32-bit)
     move.l  d0,d3
     lsr.l   #8,d3                   ; d3 = product >> 8 (pre-rounding)
-    move.b  d0,d2                   ; d2.b = low byte of the product
-    addi.b  #$80,d2                 ; ld a,l / add a,$80 — this single op
+    move.b  d0,(CH_VIB_ACCUM,a4)
+
+    addi.b  #$80,(CH_VIB_ACCUM,a4)   ; ld a,l / add a,$80 — this single op
                                      ; both produces the vibrato
                                      ; accumulator init value (d2 itself,
                                      ; truncated to a byte) AND sets the
                                      ; carry flag exactly when the
                                      ; rounding should bump vib_delta
-    move.b  d2,(CH_VIB_ACCUM,a4)
     bcc.b   .vib_no_round
     addq.w  #1,d3
 .vib_no_round:
@@ -2262,37 +2276,34 @@ snd_apply_vibrato:
     move.b  d0,d4                ; d4 = base KeyCode
     lsr.b   #4,d4                ; d4 = base octave
     move.b  d0,d5
-    andi.b  #$0F,d5              ; d5 = base note nibble (with gaps)
+    andi.b  #$0f,d5              ; d5 = base note nibble (with gaps)
     bsr     snd_note_nibble_to_index   ; d5(nibble) -> d5(0-11 index)
 
-    ; Split CH_VIB_DELTA the same way CH_FINETUNE is split
+    ; CH_VIB_DELTA is in raw units; scale to bits-7-2 space before adding
     move.w  (CH_VIB_DELTA,a4),d1
+    lsl.w   #2,d1                  ; scale delta to bits 7-2 space
     move.w  d1,d3
-    asr.w   #FINETUNE_UNITS_SHIFT,d3   ; d3 = signed semitone carry
-    add.w   d2,d1                      ; fold low bits in before masking,
-                                        ; so KeyFraction accumulates with
-                                        ; full precision over many ticks
+    asr.w   #8,d3                  ; d3 = semitone carry (256 units/semitone)
+    add.w   d2,d1                  ; fold base KF into scaled delta
     move.w  d1,d2
-    asr.w   #FINETUNE_UNITS_SHIFT,d2   ; extra carry from the addition above
-    add.w   d2,d3                      ; d3 = total semitone carry
+    asr.w   #8,d2                  ; extra carry from addition
+    add.w   d2,d3                  ; d3 = total semitone carry
     move.w  d1,d2
-    andi.w  #FINETUNE_FRAC_MASK,d2     ; d2 = new 0-63 KeyFraction
+    andi.w  #$00FC,d2              ; d2 = fraction in bits 7-2 format (mask low 2 bits)
 
-    add.w   d3,d5                      ; d5 = chromatic index + total carry
-    bsr     snd_wrap_keycode           ; d5,d4 -> d1 = new KeyCode
+    add.w   d3,d5
+    bsr     snd_wrap_keycode       ; d5,d4 -> d1 = new KeyCode
 
-    ; Write transient KC/KF directly to OPM — do not modify CH_FREQ
     move.b  (CH_CONFIG,a4),d3
     and.b   #$07,d3
 
     move.b  d3,d0
     add.b   #OPM_KC,d0
-    bsr     write_opm           ; d1.b = transient KeyCode
+    bsr     write_opm
 
     move.b  d3,d0
     add.b   #OPM_KF,d0
-    lsl.b   #2,d2               ; left-justify 6-bit fraction into bits 7-2
-    move.b  d2,d1
+    move.b  d2,d1                  ; already in bits 7-2 format — no lsl needed
     bsr     write_opm
     rts
 
@@ -2786,7 +2797,7 @@ set_portgt:
 ec_midi:
     tst.b   d1
     beq.b   ec_done
-    addq.l  #1,a5               ; skip third byte
+    addq.l  #1,a5               ; consume next data stream byte
 ec_done:
     rts
 
@@ -3107,14 +3118,6 @@ ecmd_FF_stop:
 .ff_done:
     rts
 
-ecmd_r_15h_16h:  ; d1 is the value modify and it returns d0 - $0b56?
-    and.w   #$0007,d1       ; clamp index to 0-7 (max 8 entries)
-    movea.l (CH_INST_PTR,a4),a2
-    adda.w  d1,a2
-    move.b  (a2),d0
-    rts
-
-
 ; =============================================================================
 ; snd_load_preset
 ; Load FM or MIDI preset from preset table ($80-$BF command handler)
@@ -3212,7 +3215,7 @@ snd_rel_volume:
     and.b   #$0f,d0             ; lower nibble
     ; Sign-extend 4-bit to 8-bit via shift
     lsl.b   #4,d0
-    asr.b   #2,d0               ; signed 4-bit → signed 8-bit
+    asr.b   #2,d0               ; signed 8-bit → signed 6-bit
     bmi.b   .rv_neg
     ; Positive offset = (louder)
     add.b   #4,d0
@@ -3243,7 +3246,6 @@ snd_duration_lookup:
     movea.l (CH_INST_PTR,a4),a0
     move.b  (a0,d0.w),d0
     rts
-
 
 ; =============================================================================
 ; snd_process_sfx
@@ -3584,7 +3586,7 @@ snd_inst_pitch_update:
     lsr.w   #$8,d0
     add.w   d0,(CH_VIB_DELTA,a4)
     bra     snd_write_frequency
-.l0fd9h:
+.l0fd9h:    ; TODO use same logic as music
 	; substract CH_VIB_ACCUM from
 	move.w  (INST_VIB_RESULT2,a4),d0
     moveq   #$0,d2
