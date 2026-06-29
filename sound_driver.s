@@ -232,7 +232,7 @@ CH_DISABLE          equ $01     ; [B] ix+$01 — disable flag: non-zero
                                 ; init, cleared when ready.
 CH_FREQ             equ $02     ; big endian word to replace CH_FREQ_LO and CH_FREQ_HI
 CH_NOTE_IDX         equ $02     ; key code table index (OPM specific)
-CH_NOTE_FRAC        equ $03     ; key fraction on 6 bits, bits 1-0 are used (OPM specific)
+CH_NOTE_FRAC        equ $03     ; key fraction on 6 bits, bits 1-0 are not used (OPM specific)
 CH_VIB_DELTA        equ $04     ; big endian word to replace CH_VIB_DELTA_LO and CH_VIB_DELTA_HI
 CH_VIB_ACCUM        equ $06     ; [B] ix+$06 — vibrato accumulator (init $80)
 CH_FINETUNE         equ $07     ; [B] ix+$07 — fine-tune signed offset
@@ -1362,15 +1362,15 @@ FINETUNE_FRAC_MASK      equ $3F     ; (1 << FINETUNE_UNITS_SHIFT) - 1
 ; a4 = channel block (SFX)
 snd_sfx_calc_frequency:
     andi.w  #$000f,d0
-    subq.b  #1,d0               ; d0 = chromatic index, base-0 (0-11)
-
     ; Store Z80 freq table byte 0 in SFX_VIB_BASE for vibrato step calculation
-    move.w  d0,d2
-    add.w   d2,d2               ; word index
-    lea     opm_kc_table,a0
-    move.b  (a0,d2.w),d1
-    move.b  d1,(SFX_VIB_BASE,a4)
+    ;move.w  d0,d2
+    ;add.w   d2,d2               ; word index
+    ;lea     opm_kc_table,a0
+    ;move.b  (a0,d2.w),d1
+    ;move.b  d1,(SFX_VIB_BASE,a4)
+    move.b  d0,(SFX_VIB_BASE,a4)
 
+    subq.b  #1,d0               ; d0 = chromatic index, base-0 (0-11)
     ; Apply fine-tune: split CH_FINETUNE into semitone carry + key fraction
     move.b  (CH_OCTAVE,a4),d4   ; d4 = working octave
 
@@ -1395,19 +1395,19 @@ snd_sfx_calc_frequency:
 snd_calc_frequency:
 snd_opm_calc_freq:
     andi.w  #$000f,d0
-    subq.b  #1,d0               ; d0 = chromatic index, base-0 (0-11)
-
     ; Check MIDI/PSG channel
     btst.b  #5,(CH_CONFIG,a4)
     bne     .freq_midi_path
 
     ; Store Z80 freq table byte 0 in CH_VIB_BASE for vibrato step calculation
-    move.w  d0,d2
-    add.w   d2,d2               ; word index
-    lea     opm_kc_table,a0
-    move.b  (a0,d2.w),d1
-    move.b  d1,(CH_VIB_BASE,a4)
+    ;move.w  d0,d2
+    ;add.w   d2,d2               ; word index
+    ;lea     opm_kc_table,a0
+    ;move.b  (a0,d2.w),d1
+    ;move.b  d1,(CH_VIB_BASE,a4)
+    move.b  d0,(CH_VIB_BASE,a4) ; d0 is note variation
 
+    subq.b  #1,d0               ; d0 = chromatic index, base-0 (0-11)
     ; Apply fine-tune: split CH_FINETUNE into semitone carry + key fraction
     move.b  (CH_OCTAVE,a4),d4   ; d4 = working octave
 
@@ -1430,6 +1430,7 @@ snd_opm_calc_freq:
 
 .freq_midi_path:
     ; --- MIDI/PSG path — unchanged ---
+    subq.b  #1,d0               ; d0 = chromatic index, base-0 (0-11)
     lea     midi_note_offset,a0
     moveq   #0,d1
     move.b  (a0,d0.w),d1
@@ -1456,9 +1457,6 @@ snd_opm_calc_freq:
 ;      d4.b = wrapped, clamped octave (0-7)
 ; =============================================================================
 snd_wrap_note_idx:
-    ; Bounded loop, not a generic signed divide — callers only ever
-    ; produce a carry of roughly -2..+2, so this never iterates more
-    ; than a handful of times.
 .kc_wrap_down:
     cmp.w   #0,d5
     bge.b   .kc_wrap_up
@@ -1484,6 +1482,7 @@ snd_wrap_note_idx:
 ; Write order: KeyCode first ($28+ch), then KeyFraction ($30+ch)
 ; This mirrors the YM2612 requirement of writing $A4 before $A0
 ; the YM2612 sends octave and freq so no need to convert to full freq
+; clobbers a0
 ; =============================================================================
 snd_write_frequency:
     ; Check MIDI channel
@@ -1494,13 +1493,13 @@ snd_write_frequency:
     move.b  d0,d5
     andi.w  #$000f,d5            ; d5 = note chromatic index - masked as word for later
     move.b  d0,d4
-    lsl.b   #$4,d4               ; d4 = octave
+    lsr.b   #$4,d4               ; d4 = octave
     moveq   #$0,d2               ; will be used as word later on
     move.b  (CH_NOTE_FRAC,a4),d2 ; d2 = KF
 
     ; CH_VIB_DELTA is in raw units; scale to bits-7-2 space before adding
     move.w  (CH_VIB_DELTA,a4),d1
-    lsl.w   #2,d1                  ; scale delta to bits 7-2 space
+    ;lsl.w   #2,d1                  ; scale delta to bits 7-2 space
     add.w   d1,d2                  ; fold base KF into scaled delta
     move.w  d2,d3                  ; save result o d3 to work out note index
     andi.w  #$00fc,d2              ; d2 = fraction in bits 7-2 format (mask low 2 bits)
@@ -1512,7 +1511,8 @@ snd_write_frequency:
     lsl.b   #4,d4
     add.w   d5,d5                 ; correct index in 2 byte object table
     addq    #$1,d5                 ; offset is 1 to access the Key code in the table
-    move.b  (opm_kc_table,d5.w),d5
+    lea     opm_kc_table,a0
+    move.b  (a0,d5.w),d5
     or.b    d4,d5                  ; KeyCode Reg = (octave<<4) | note_nibble
 
     move.b  (CH_CONFIG,a4),d3
@@ -2042,14 +2042,14 @@ snd_apply_arpeggio:
     bne     .vib_psg_step_calc		;09bb
     moveq   #0,d0
     moveq   #0,d1
-    move.b  (CH_VIB_BASE,a4),d0
-    move.b  (CH_VIB_MUL_UP,a4),d1
+    move.b  (CH_VIB_BASE,a4),d0         ; 1-12
+    move.b  (CH_VIB_MUL_UP,a4),d1       ; $11ee max (12*255) will be a wole octave at most
     mulu.w  d0,d1
-    move.w  d1,(CH_VIB_STEP_UP,a4)  ; freq?
+    move.w  d1,(CH_VIB_STEP_UP,a4)      ; changed from freq diff to chromatic note index
     moveq   #0,d1
     move.b  (CH_VIB_MUL_DOWN,a4),d1
     mulu.w  d0,d1
-    move.w  d1,(CH_VIB_STEP_DOWN,a4)  ; freq?
+    move.w  d1,(CH_VIB_STEP_DOWN,a4)    ; changed from freq diff to chromatic note index
     bra     .l0a09h		    ;09d8
 .vib_psg_step_calc:
 	moveq   #0,d0
@@ -2106,21 +2106,21 @@ snd_apply_arpeggio:
     move.w  (CH_VIB_STEP_UP,a4),d0
     add.b   d0,(CH_VIB_ACCUM,a4)
     bcc.b   .no_add_carry
-    addi.w  #$100,d0               ; add carry from accum add
+    addi.w  #$12,d0                ; add $12 to allow for add key fraction into step_hi
 .no_add_carry:
-    lsr.w   #$8,d0
-    beq     .vib_arp_done               ; if step_hi + carry = 0, done
-    add.w   d0,(CH_VIB_DELTA,a4)        ; delta += step_hi (only the high byte carry)
+    lsr.w   #$6,d0
+    beq     .vib_arp_done          ; if step_hi + carry = 0, done
+    add.w   d0,(CH_VIB_DELTA,a4)   ; add key fraction
     bra     .write_new_freq
 .vib_sub:
     move.w  (CH_VIB_STEP_DOWN,a4),d0
     sub.b   d0,(CH_VIB_ACCUM,a4)
     bcc.b   .no_sub_carry
-    addi.w  #$100,d0               ; add carry from accum add
+    addi.w  #$12,d0                ; add $12 to allow for add key fraction into step_lo
 .no_sub_carry:
-    lsr.w   #$8,d0
-    beq     .vib_arp_done               ; if step_hi + carry = 0, done
-    sub.w   d0,(CH_VIB_DELTA,a4)        ; delta += step_hi (only the high byte carry)
+    lsr.w   #$6,d0
+    beq     .vib_arp_done          ; if step_hi + carry = 0, done
+    sub.w   d0,(CH_VIB_DELTA,a4)   ; add key fraction
 .write_new_freq
     bsr     snd_write_frequency
     ;bra     .vib_arp_done
@@ -2143,12 +2143,12 @@ snd_force_arp_setup:
 
     ; STEP = BASE_NOTE * ARP_INTERVAL
     moveq   #0,d0
-    move.b  (CH_VIB_BASE,a4),d0        ; d0 = BASE_NOTE
+    move.b  (CH_VIB_BASE,a4),d0        ; d0 = VIB_BASE
     moveq   #0,d1
-    move.b  (CH_ARP_INTERVAL,a4),d1
-    mulu.w  d1,d0                       ; d0 = STEP (16-bit)
-    move.w  d0,(CH_VIB_STEP_UP,a4)
-    move.w  d0,(CH_VIB_STEP_DOWN,a4)
+    move.b  (CH_ARP_INTERVAL,a4),d1     ; is this using chromatic interval?
+    mulu.w  d1,d0                       ; d0 = end note
+    move.w  d0,(CH_VIB_STEP_UP,a4)      ; save target
+    move.w  d0,(CH_VIB_STEP_DOWN,a4)    ; save target
 
     ; Depth calculation: CH_VIB_DELTA = round(BASE_NOTE * DEPTH)
     ; Z80: de = high(STEP_LO * DEPTH) + BASE_NOTE * DEPTH + rounding_carry
@@ -3446,22 +3446,22 @@ snd_sfx_pitch_update:
     bne     .l0fd9h
     ; add path
     move.w  (SFX_VIB_STEP_UP,a4),d0
-    add.b   d0,(CH_VIB_ACCUM,a4)       ; accum += step_lo, sets carry
+    add.b   d0,(CH_VIB_ACCUM,a4)        ; accum += step_lo, sets carry
     bcc.b   .no_add_carry
-    addi.w  #$100,d0                    ; propagate carry into step_hi
+    addi.w  #$12,d0                     ; add $12 to allow for add key fraction into step_hi
 .no_add_carry:
-    lsr.w   #8,d0                       ; d0 = step_hi + carry
+    lsr.w   #6,d0                       ; d0 = saved as key fraction to match OPM KC/KF
     beq     .ipu_done
-    add.w   d0,(CH_VIB_DELTA,a4)
+    add.w   d0,(CH_VIB_DELTA,a4)        ; add key fraction
     bra     snd_write_frequency
 .l0fd9h:
     ; sub path
     move.w  (SFX_VIB_STEP_DOWN,a4),d0
-    sub.b   d0,(CH_VIB_ACCUM,a4)       ; accum -= step_lo, sets carry on borrow
+    sub.b   d0,(CH_VIB_ACCUM,a4)        ; accum -= step_lo, sets carry on borrow
     bcc.b   .no_sub_carry
-    addi.w  #$100,d0                    ; propagate borrow into step_hi
+    addi.w  #$12,d0                     ; add $12 to allow for add key fraction into step_hi
 .no_sub_carry:
-    lsr.w   #8,d0                       ; d0 = step_hi + borrow
+    lsr.w   #6,d0                       ; d0 = saved as key fraction to match OPM KC/KF
     beq     .ipu_done
     sub.w   d0,(CH_VIB_DELTA,a4)
     bra     snd_write_frequency
