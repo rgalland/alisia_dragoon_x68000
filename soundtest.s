@@ -795,7 +795,7 @@ cleanup:
     subq.l  #1,d0
     bne.b   .wait
 
-    jsr     snd_silence_all
+    jsr     snd_cmd_silence_all
 
     ; Mask the FM Audio source interrupt at the MFP before removing handler
     bclr    #3,(MFP_IMRB)
