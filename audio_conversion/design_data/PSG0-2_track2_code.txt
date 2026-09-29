@@ -1,0 +1,1553 @@
+;$0476	Track 2 (track#)
+;$0c89	PSG0 offset from Track 2 addr
+;$0ec7	PSG1 offset from Track 2 addr
+;$113c	PSG2 offset from Track 2 addr
+
+; absolute values in binary file
+;$10ff	PSG0 data stream addr in file
+;$133b  PSG0 end of stream
+;$133d	PSG1 data stream addr in file
+;$15b1  PSG1 end of stream
+;$15b2	PSG2 data stream addr in file
+;$178e  PSG2 end of stream
+
+; $000B is the address to set the alternative loop. Once entered, it cannot exit so play the alternative loop repeatedly
+
+; PSG0
+    f0 00     ; get duration LUT 0
+    80        ; get psg preset $0
+    d2        ; set octave to 2
+    e5 25     ; set volume to $25
+    e1 03     ; finetune frequency +$03
+    fc pattern_psg0_psg2    ; 34 0e, save return address and jump to $01ab (track# + $0e34 = $12aa and $12aa - $10ff = $01ab) 
+pattern_psg0_2d:
+    f0 00     ; get duration LUT 0
+    fc pattern_psg0_psg2    ; 34 0e, save return address and jump to $01ab (track# + $0e34 = $12aa and $12aa - $10ff = $01ab)
+    e4        ; inc octave
+    e5 2d     ; set volume to $2d
+    fc pattern_psg0_psg2    ; 34 0e, save return address and jump to $01ab (track# + $0e34 = $12aa and $12aa - $10ff = $01ab)
+    fc pattern_psg0_psg2    ; 34 0e, save return address and jump to $01ab (track# + $0e34 = $12aa and $12aa - $10ff = $01ab)
+    fc pattern_psg0_psg2    ; 34 0e, save return address and jump to $01ab (track# + $0e34 = $12aa and $12aa - $10ff = $01ab)
+    2a        ; duration 2, note = A
+    e4        ; inc octave
+    25        ; duration 2, note = E
+    2c        ; duration 2, note = B
+    e3        ; dec octave
+    45        ; duration 4, note = E
+    e4        ; inc octave
+    2c        ; duration 2, note = B 
+    e3        ; dec octave 
+    26        ; duration 2, note = F 
+    e4        ; inc octave 
+    21        ; duration 2, note = C 
+    2a        ; duration 2, note = A 
+    e3        ; dec octave 
+    41        ; duration 4, note = C 
+    e4        ; inc octave 
+    2a        ; duration 2, note = A 
+    e3        ; dec octave 
+    28        ; duration 2, note = G 
+    e4        ; inc octave
+    23        ; duration 2, note = D
+    28        ; duration 2, note = G
+    e3        ; dec octave
+    48        ; duration 4, note = G 
+    e4        ; inc octave 
+    28        ; duration 2, note = G 
+    22        ; duration 2, note = C# 
+    25        ; duration 2, note = E 
+    e4        ; inc octave 
+    22        ; duration 2, note = C# 
+    e3        ; dec octave
+    2a        ; duration 2, note = A 
+    e4        ; inc octave 
+    25        ; duration 5, note = E 
+    e3        ; dec octave
+    2a        ; duration 2, note = A
+    e3        ; dec octave
+    fc pattern_psg0_2a  ; 5b 0e, save return address and jump to $01d2 (track# + $0e5b = $12d1 and $12d1 - $10ff = $01d2)
+    2a        ; duration 2, note = A
+    2a        ; duration 2, note = A
+    2a        ; duration 2, note = A
+    2a        ; duration 2, note = A
+    2a        ; duration 2, note = A
+    2a        ; duration 2, note = A
+    28        ; duration 2, note = G
+    28        ; duration 2, note = G
+    28        ; duration 2, note = G
+    28        ; duration 2, note = G
+    28        ; duration 2, note = G
+    28        ; duration 2, note = G
+    28        ; duration 2, note = G
+    28        ; duration 2, note = G
+    28        ; duration 2, note = G
+    28        ; duration 2, note = G
+    28        ; duration 2, note = G
+    28        ; duration 2, note = G
+    28        ; duration 2, note = G
+    28        ; duration 2, note = G
+    28        ; duration 2, note = G
+    28        ; duration 2, note = G
+    28        ; duration 2, note = G
+    28        ; duration 2, note = G
+    fc pattern_psg0_2a  ; 5b 0e, save return address and jump to $01d2 (track# + $0e5b = $12d1 and $12d1 - $10ff = $01d2)
+    21        ; duration 2, note = C
+    26        ; duration 2, note = F
+    2a        ; duration 2, note = A
+    26        ; duration 2, note = F
+    e4        ; inc octave
+    21        ; duration 2, note = C
+    e3        ; dec octave
+    2a        ; duration 2, note = A 
+    e3        ; dec octave 
+    2b        ; duration 2, note = A# 
+    e4        ; inc octave 
+    23        ; duration 2, note = D 
+    26        ; duration 2, note = F 
+    23        ; duration 2, note = D 
+    2b        ; duration 2, note = A# 
+    26        ; duration 2, note = F 
+    e4        ; inc octave
+    25        ; duration 2, note = E
+    2a        ; duration 2, note = A
+    2c        ; duration 2, note = B
+    e4        ; inc octave
+    23        ; duration 2, note = D
+    e3        ; dec octave
+    2c        ; duration 2, note = B 
+    2a        ; duration 2, note = A 
+    25        ; duration 2, note = E 
+    2a        ; duration 2, note = A 
+    2c        ; duration 2, note = B 
+    e4        ; inc octave 
+    21        ; duration 2, note = C 
+    23        ; duration 2, note = D 
+    25        ; duration 2, note = E 
+    e3        ; dec octave
+    e3        ; dec octave 
+    e3        ; dec octave 
+    f4 01 01  pattern_psg0_2b  ; a1 0d, if table[1] = $01 and jump to $0118 (track# + $0da1 = $1217 and $1217 - $10ff = $0118)
+    fc pattern_psg0_psg2    ; 34 0e, save return address and jump to $01ab (track# + $0e34 = $12aa and $12aa - $10ff = $01ab)
+    2a        ; duration 2, note = A 
+    e4        ; inc octave 
+    25        ; duration 2, note = E
+    2c        ; duration 2, note = B 
+    e3        ; dec octave 
+    45        ; duration 4, note = E
+    e4        ; inc octave
+    2c        ; duration 2, note = B 
+    e3        ; dec octave 
+    26        ; duration 2, note = F 
+    e4        ; inc octave 
+    21        ; duration 2, note = C
+    2a        ; duration 2, note = A 
+    e3        ; dec octave 
+    41        ; duration 4, note = C 
+    e4        ; inc octave 
+    2a        ; duration 2, note = A 
+    e3        ; dec octave 
+    28        ; duration 2, note = G 
+    e4        ; inc octave 
+    23        ; duration 2, note = D 
+    28        ; duration 2, note = G
+    e3        ; dec octave
+    43        ; duration 4, note = D
+    e4        ; inc octave 
+    28        ; duration 2, note = G 
+    e3        ; dec octave 
+    2a        ; duration 2, note = A 
+    e4        ; inc octave 
+    25        ; duration 2, note = E 
+    e4        ; inc octave 
+    22        ; duration 2, note = C# 
+    e3        ; dec octave 
+    e3        ; dec octave 
+    45        ; duration 4, note = E 
+    e4        ; inc octave 
+    2a        ; duration 2, note = A 
+    23        ; duration 2, note = D
+    e3        ; dec octave 
+    2a        ; duration 2, note = A 
+    e4        ; inc octave
+    23        ; duration 2, note = D 
+    26        ; duration 2, note = F 
+    2a        ; duration 2, note = A 
+    26        ; duration 2, note = F 
+    28        ; duration 2, note = G 
+    23        ; duration 2, note = D 
+    28        ; duration 2, note = G 
+    2c        ; duration 2, note = B 
+    28        ; duration 2, note = G 
+    23        ; duration 2, note = D 
+    26        ; duration 2, note = F 
+    21        ; duration 2, note = C
+    26        ; duration 2, note = F
+    2a        ; duration 2, note = A
+    26        ; duration 2, note = F 
+    21        ; duration 2, note = C 
+    28        ; duration 2, note = G 
+    23        ; duration 2, note = D 
+    28        ; duration 2, note = G 
+    2c        ; duration 2, note = B 
+    28        ; duration 2, note = G 
+    23        ; duration 2, note = D 
+    26        ; duration 2, note = F 
+    23        ; duration 2, note = D 
+    26        ; duration 2, note = F 
+    2a        ; duration 2, note = A 
+    26        ; duration 2, note = F 
+    23        ; duration 2, note = D 
+    25        ; duration 2, note = E
+    21        ; duration 2, note = C 
+    25        ; duration 2, note = E
+    28        ; duration 2, note = G 
+    25        ; duration 2, note = E 
+    21        ; duration 2, note = C
+    27        ; duration 2, note = F# 
+    23        ; duration 2, note = D 
+    27        ; duration 2, note = F# 
+    2a        ; duration 2, note = A 
+    27        ; duration 2, note = F# 
+    23        ; duration 2, note = D 
+    27        ; duration 2, note = F# 
+    23        ; duration 2, note = D 
+    27        ; duration 2, note = F# 
+    2a        ; duration 2, note = A 
+    27        ; duration 2, note = F#
+    23        ; duration 2, note = D
+    26        ; duration 2, note = F 
+    23        ; duration 2, note = D 
+    26        ; duration 2, note = F 
+    2a        ; duration 2, note = A 
+    26        ; duration 2, note = F 
+    23        ; duration 2, note = D 
+    28        ; duration 2, note = G 
+    25        ; duration 2, note = E 
+    28        ; duration 2, note = G 
+    e4        ; inc octave
+    21        ; duration 2, note = C 
+    e3        ; dec octave 
+    28        ; duration 2, note = G 
+    25        ; duration 2, note = E 
+    28        ; duration 2, note = G
+    23        ; duration 2, note = D
+    28        ; duration 2, note = G 
+    2c        ; duration 2, note = B 
+    28        ; duration 2, note = G 
+    23        ; duration 2, note = D 
+    28        ; duration 2, note = G 
+    23        ; duration 2, note = D 
+    28        ; duration 2, note = G 
+    2c        ; duration 2, note = B 
+    28        ; duration 2, note = G 
+    23        ; duration 2, note = D 
+    28        ; duration 2, note = G 
+    23        ; duration 2, note = D 
+    28        ; duration 2, note = G 
+    2c        ; duration 2, note = B  
+    28        ; duration 2, note = G
+    23        ; duration 2, note = D
+    28        ; duration 2, note = G 
+    23        ; duration 2, note = D 
+    28        ; duration 2, note = G 
+    2c        ; duration 2, note = B 
+    28        ; duration 2, note = G 
+    23        ; duration 2, note = D 
+    e3        ; dec octave 
+    f4 01 01 pattern_psg0_2c  ; 9c 0d, if table[1] = $01 and jump to $0113 (track# + $0d9c = $1212 and $1212 - $10ff = $0113) 
+    fc pattern_psg0_psg2    ; 34 0e, save return address and jump to $01ab (track# + $0e34 = $12aa and $12aa - $10ff = $01ab)
+    fb pattern_psg0_2d      ; 94 0c, jump to $000b (track# + $0c94 = $110a and $110a - $10ff = $000b)
+pattern_psg0_2c:
+    f0 00     ; get duration LUT 0
+    fc pattern_psg0_psg2    ; 34 0e, save return address and jump to $01ab (track# + $0e34 = $12aa and $12aa - $10ff = $01ab)
+pattern_psg0_2b:
+    f0 00     ; get duration LUT 0
+    81        ; get psg preset $0
+    d2        ; set octave to 2
+    2a        ; duration 2, note = A
+    2a        ; duration 2, note = A
+    f0 07     ; get duration LUT 7
+    00        ; NOP
+    7a        ; duration 7, note = A
+    76        ; duration 7, note = F
+    76        ; duration 7, note = F
+    30        ; duration 3, note = rest 
+    11        ; duration 1, note = C 
+    73        ; duration 7, note = D 
+    73        ; duration 7, note = D 
+    00        ; NOP 
+    73        ; duration 7, note = D 
+    78        ; duration 7, note = G 
+    7a        ; duration 7, note = A 
+    20        ; duration 2, note = rest 
+    75        ; duration 7, note = E 
+    78        ; duration 7, note = G 
+    75        ; duration 7, note = E
+    7a        ; duration 7, note = A 
+    7a        ; duration 7, note = A
+    20        ; duration 2, note = rest 
+    7a        ; duration 7, note = A 
+    10        ; duration 1, note = rest 
+    76        ; duration 7, note = F 
+    76        ; duration 7, note = F 
+    30        ; duration 3, note = rest 
+    13        ; duration 1, note = D 
+    78        ; duration 7, note = G 
+    78        ; duration 7, note = G 
+    20        ; duration 2, note = rest 
+    75        ; duration 7, note = E 
+    70        ; duration 7, note = rest 
+    75        ; duration 7, note = E 
+    cc        ; set relative volume (-4)
+    7a        ; duration 7, note = A
+    c0        ; set relative volume (0) 
+    7a        ; duration 7, note = A
+    c0        ; set relative volume (0) 
+    7a        ; duration 7, note = A
+    c0        ; set relative volume (0) 
+    7a        ; duration 7, note = A
+    c0        ; set relative volume (0) 
+    7a        ; duration 7, note = A 
+    7a        ; duration 7, note = A
+    e4        ; inc octave
+    6a e7     ; duration 6, note = A with sustain
+    68 e7     ; duration 6, note = G with sustain
+    66 e7     ; duration 6, note = F with sustain
+    65 e7     ; duration 6, note = E with sustain
+    63 e7     ; duration 6, note = D with sustain
+    61        ; duration 6, note = C
+    80        ; get psg preset $0
+    fc pattern_psg0_2e  ; 76 0e, save return address and jump to $01ed (track# + $0e76 = $12ec and $12ec - $10ff = $01ed) 
+    e3        ; dec octave
+    75        ; duration 7, note = E
+    7c        ; duration 7, note = B
+    e4        ; inc octave
+    78        ; duration 7, note = G
+    e3        ; dec octave
+    1c        ; duration 1, note = B 
+    e4        ; inc octave
+    75        ; duration 7, note = E
+    e3        ; dec octave
+    78        ; duration 7, note = G
+    7c        ; duration 7, note = B
+    e4        ; inc octave
+    fc pattern_psg0_2e  ; 76 0e, save return address and jump to $01ed (track# + $0e76 = $12ec and $12ec - $10ff = $01ed)
+    e3        ; dec octave
+    7a        ; duration 7, note = A
+    e4        ; inc octave
+    75        ; duration 7, note = E
+    7c        ; duration 7, note = B
+    e3        ; dec octave
+    15        ; duration 1, note = E
+    e4        ; inc octave
+    7a        ; duration 7, note = A
+    e3        ; dec octave
+    7a        ; duration 7, note = A
+    e4        ; inc octave
+    75        ; duration 7, note = E
+    fc pattern_psg0_2f  ; a0 0e, save return address and jump to $0217 (track# + $0ea0 = $1316 and $1316 - $10ff = $217)
+    78        ; duration 7, note = G
+    18        ; duration 1, note = G
+    18        ; duration 1, note = G
+    78        ; duration 7, note = G
+    78        ; duration 7, note = G
+    48        ; duration 4, note = G
+    48        ; duration 4, note = G 
+    78        ; duration 7, note = G
+    18        ; duration 1, note = G
+    18        ; duration 1, note = G
+    78        ; duration 7, note = G
+    78        ; duration 7, note = G
+    48        ; duration 4, note = G
+    48        ; duration 4, note = G
+    78        ; duration 7, note = G
+    18        ; duration 1, note = G
+    18        ; duration 1, note = G
+    78        ; duration 7, note = G
+    78        ; duration 7, note = G
+    48        ; duration 4, note = G
+    48        ; duration 4, note = G
+    e4        ; inc octave
+    fc pattern_psg0_2f    ; a0 0e, save return address and jump to $0217 (track# + $0ea0 = $1316 and $1316 - $10ff = $217)
+    76        ; duration 7, note = F
+    16        ; duration 1, note = F
+    16        ; duration 1, note = F
+    76        ; duration 7, note = F
+    76        ; duration 7, note = F
+    46        ; duration 4, note = F
+    46        ; duration 4, note = F
+    79        ; duration 7, note = G#
+    19        ; duration 1, note = G#
+    19        ; duration 1, note = G#
+    79        ; duration 7, note = G#
+    79        ; duration 7, note = G#
+    49        ; duration 4, note = G#
+    49        ; duration 4, note = G#
+    75        ; duration 7, note = E
+    15        ; duration 1, note = E
+    15        ; duration 1, note = E
+    75        ; duration 7, note = E
+    75        ; duration 7, note = E
+    45        ; duration 4, note = E
+    45        ; duration 4, note = E
+    fb pattern_psg0_2b    ; a1 0d, jump to $0118 (track# + $0da1 = $1217 and $1217 - $10ff = $0118) 
+pattern_psg0_psg2:
+    f0 07     ; get duration LUT 7
+    7a        ; duration 7, note = A 
+    e4        ; inc octave
+    75        ; duration 7, note = E
+    7c        ; duration 7, note = B
+    e3        ; dec octave
+    15        ; duration 1, note = E
+    e4        ; inc octave
+    7c        ; duration 7, note = B
+    e3        ; dec octave
+    76        ; duration 7, note = F
+    e4        ; inc octave
+    71        ; duration 7, note = C
+    7a        ; duration 7, note = A
+    e3        ; dec octave
+    11        ; duration 1, note = C
+    e4        ; inc octave
+    7a        ; duration 7, note = A 
+    e3        ; dec octave
+    78        ; duration 7, note = G 
+    e4        ; inc octave
+    73        ; duration 7, note = D 
+    78        ; duration 7, note = G 
+    e3        ; dec octave
+    13        ; duration 1, note = D 
+    e4        ; inc octave
+    78        ; duration 7, note = G 
+    e3        ; dec octave
+    7a        ; duration 7, note = A
+    e4        ; inc octave
+    75        ; duration 7, note = E
+    7c        ; duration 7, note = B
+    e3        ; dec octave
+    15        ; duration 1, note = E
+    e4        ; inc octave
+    7a        ; duration 7, note = A
+    e3        ; dec octave
+    fe        ; return
+pattern_psg0_2a:
+    f0 07     ; get duration LUT 7
+    78        ; duration 7, note = G
+    78        ; duration 7, note = G
+    78        ; duration 7, note = G
+    78        ; duration 7, note = G
+    78        ; duration 7, note = G
+    78        ; duration 7, note = G
+    78        ; duration 7, note = G
+    78        ; duration 7, note = G
+    78        ; duration 7, note = G
+    78        ; duration 7, note = G
+    78        ; duration 7, note = G
+    78        ; duration 7, note = G
+    7a        ; duration 7, note = A
+    7a        ; duration 7, note = A
+    7a        ; duration 7, note = A
+    7a        ; duration 7, note = A
+    7a        ; duration 7, note = A
+    7a        ; duration 7, note = A
+    78        ; duration 7, note = G
+    78        ; duration 7, note = G
+    78        ; duration 7, note = G
+    78        ; duration 7, note = G
+    78        ; duration 7, note = G
+    78        ; duration 7, note = G
+    fe        ; return
+pattern_psg0_2e:
+    f0 07     ; get duration LUT 7
+    e3        ; dec octave
+    7a        ; duration 7, note = A
+    e4        ; inc octave 
+    75        ; duration 7, note = E
+    7c        ; duration 7, note = B
+    e3        ; dec octave
+    15        ; duration 1, note = E
+    e4        ; inc octave
+    7a        ; duration 7, note = A
+    e3        ; dec octave
+    7a        ; duration 7, note = A
+    e4        ; inc octave
+    75        ; duration 7, note = E
+    e3        ; dec octave
+    76        ; duration 7, note = F
+    e4        ; inc octave
+    71        ; duration 7, note = C
+    7a        ; duration 7, note = A
+    e3        ; dec octave
+    16        ; duration 1, note = F
+    e4        ; inc octave
+    76        ; duration 7, note = F
+    e3        ; dec octave
+    7a        ; duration 7, note = A
+    e4        ; inc octave
+    71        ; duration 7, note = C
+    e3        ; dec octave
+    78        ; duration 7, note = G
+    e4        ; inc octave
+    73        ; duration 7, note = D
+    7a        ; duration 7, note = A
+    e3        ; dec octave
+    1c        ; duration 1, note = B
+    e4        ; inc octave
+    78        ; duration 7, note = G
+    e3        ; dec octave
+    78        ; duration 7, note = G
+    e4        ; inc octave
+    73        ; duration 7, note = D
+    fe        ; return
+pattern_psg0_2f:
+    f0 07     ; get duration LUT 7
+    71        ; duration 7, note = C
+    11        ; duration 1, note = C
+    11        ; duration 1, note = C
+    71        ; duration 7, note = C
+    71        ; duration 7, note = C
+    41        ; duration 4, note = C
+    41        ; duration 4, note = C
+    e3        ; dec octave
+    7c        ; duration 7, note = B
+    1c        ; duration 1, note = B
+    1c        ; duration 1, note = B
+    7c        ; duration 7, note = B
+    7c        ; duration 7, note = B
+    4c        ; duration 4, note = B
+    4c        ; duration 4, note = B
+    7a        ; duration 7, note = A
+    1a        ; duration 1, note = A
+    1a        ; duration 1, note = A
+    7a        ; duration 7, note = A
+    7a        ; duration 7, note = A
+    4a        ; duration 4, note = A
+    4a        ; duration 4, note = A
+    78        ; duration 7, note = G
+    18        ; duration 1, note = G
+    18        ; duration 1, note = G
+    78        ; duration 7, note = G
+    78        ; duration 7, note = G
+    48        ; duration 4, note = G
+    48        ; duration 4, note = G
+    76        ; duration 7, note = F
+    16        ; duration 1, note = F
+    16        ; duration 1, note = F
+    76        ; duration 7, note = F
+    76        ; duration 7, note = F
+    46        ; duration 4, note = F
+    46        ; duration 4, note = F
+    fe        ; return
+
+; PSG1
+    f0 00     ; get duration LUT 0
+    80        ; get psg preset $0
+    d3        ; set octave to 3
+    e5 25     ; set volume to $25
+    e1 fd     ; finetune frequency -$03
+    fc pattern_psg1_2a    ; a9 10, save return address and jump to $01e2 (track# + $10a9 = $151f and $151f - $133d = $01e2) 
+pattern_psg1_2e:
+    f0 00     ; get duration LUT 0
+    fc pattern_psg1_2a    ; a9 10, save return address and jump to $01e2 (track# + $10a9 = $151f and $151f - $133d = $01e2)
+    e5 2d     ; set volume to $2d
+    e4        ; inc octave
+    fc pattern_psg1_2a    ; a9 10, save return address and jump to $01e2 (track# + $10a9 = $151f and $151f - $133d = $01e2)
+    fc pattern_psg1_2a    ; a9 10, save return address and jump to $01e2 (track# + $10a9 = $151f and $151f - $133d = $01e2)
+    fc pattern_psg1_2a    ; a9 10, save return address and jump to $01e2 (track# + $10a9 = $151f and $151f - $133d = $01e2)
+    21        ; duration 2, note = C
+    25        ; duration 2, note = E
+    28        ; duration 2, note = G
+    20        ; duration 2, note = rest
+    e3        ; dec octave
+    2a        ; duration 2, note = A
+    e4        ; inc octave
+    28        ; duration 2, note = G
+    e3        ; dec octave
+    2a        ; duration 2, note = A
+    e4        ; inc octave
+    21        ; duration 2, note = C
+    26        ; duration 2, note = F
+    20        ; duration 2, note = rest
+    e3        ; dec octave
+    26        ; duration 2, note = F
+    e4        ; inc octave
+    26        ; duration 2, note = F
+    e3        ; dec octave
+    2c        ; duration 2, note = B
+    e4        ; inc octave
+    23        ; duration 2, note = D
+    23        ; duration 2, note = D
+    20        ; duration 2, note = rest
+    e3        ; dec octave
+    28        ; duration 2, note = G
+    e4        ; inc octave
+    23        ; duration 2, note = D
+    22        ; duration 2, note = C#
+    25        ; duration 2, note = E
+    e4        ; inc octave
+    22        ; duration 2, note = C#
+    e3        ; dec octave
+    25        ; duration 2, note = E
+    2a        ; duration 2, note = A
+    25        ; duration 2, note = E
+    d3        ; set octave to 3
+    fc pattern_psg1_2b    ; d0 10, save return address and jump to $0209 (track# + $10d0 = $1546 and $1546 - $133d = $0209)
+    21        ; duration 2, note = C
+    21        ; duration 2, note = C
+    21        ; duration 2, note = C
+    21        ; duration 2, note = C
+    21        ; duration 2, note = C
+    21        ; duration 2, note = C
+    23        ; duration 2, note = D
+    23        ; duration 2, note = D
+    23        ; duration 2, note = D
+    23        ; duration 2, note = D
+    23        ; duration 2, note = D
+    23        ; duration 2, note = D
+    25        ; duration 2, note = E
+    25        ; duration 2, note = E
+    25        ; duration 2, note = E
+    25        ; duration 2, note = E
+    25        ; duration 2, note = E
+    25        ; duration 2, note = E
+    23        ; duration 2, note = D
+    23        ; duration 2, note = D
+    23        ; duration 2, note = D
+    23        ; duration 2, note = D
+    23        ; duration 2, note = D
+    23        ; duration 2, note = D
+    fc pattern_psg1_2b    ; d0 10, save return address and jump to $0209 (track# + $10d0 = $1546 and $1546 - $133d = $0209)
+    e3        ; dec octave
+    2a        ; duration 2, note = A
+    e4        ; inc octave
+    21        ; duration 2, note = C
+    26        ; duration 2, note = F
+    21        ; duration 2, note = C
+    2a        ; duration 2, note = A
+    26        ; duration 2, note = F
+    e3        ; dec octave
+    23        ; duration 2, note = D
+    2b        ; duration 2, note = A#
+    e4        ; inc octave
+    23        ; duration 2, note = D
+    e3        ; dec octave
+    2b        ; duration 2, note = A#
+    e4        ; inc octave
+    26        ; duration 2, note = F
+    23        ; duration 2, note = D
+    2c        ; duration 2, note = B
+    e4        ; inc octave
+    25        ; duration 2, note = E
+    29        ; duration 2, note = G#
+    2c        ; duration 2, note = B
+    29        ; duration 2, note = G#
+    25        ; duration 2, note = E
+    e3        ; dec octave
+    2c        ; duration 2, note = B
+    e4        ; inc octave
+    21        ; duration 2, note = C
+    23        ; duration 2, note = D
+    25        ; duration 2, note = E
+    27        ; duration 2, note = F#
+    29        ; duration 2, note = G#
+    f4 01 01 pattern_psg1_2c  ; 0a 10, if $000B = $01 and jump to $0143 (track# + $100a = $1480 and $1480 - $133d = $0143)
+    d3        ; set octave to 3
+    fc pattern_psg1_2a    ; a9 10, save return address and jump to $01e2 (track# + $10a9 = $151f and $151f - $133d = $01e2)
+    21        ; duration 2, note = C
+    25        ; duration 2, note = E
+    28        ; duration 2, note = G
+    20        ; duration 2, note = rest
+    e3        ; dec octave
+    2a        ; duration 2, note = A
+    e4        ; inc octave
+    28        ; duration 2, note = G
+    e3        ; dec octave
+    2a        ; duration 2, note = A
+    e4        ; inc octave
+    21        ; duration 2, note = C
+    26        ; duration 2, note = F
+    20        ; duration 2, note = rest
+    e3        ; dec octave
+    26        ; duration 2, note = F
+    e4        ; inc octave
+    26        ; duration 2, note = F
+    e3        ; dec octave
+    2c        ; duration 2, note = B
+    e4        ; inc octave
+    23        ; duration 2, note = D
+    23        ; duration 2, note = D
+    20        ; duration 2, note = rest
+    e3        ; dec octave
+    28        ; duration 2, note = G
+    e4        ; inc octave
+    23        ; duration 2, note = D
+    22        ; duration 2, note = C#
+    25        ; duration 2, note = E
+    28        ; duration 2, note = G
+    20        ; duration 2, note = rest
+    e3        ; dec octave
+    2a        ; duration 2, note = A
+    e4        ; inc octave
+    25        ; duration 2, note = E
+    e3        ; dec octave
+    2a        ; duration 2, note = A
+    26        ; duration 2, note = F
+    2a        ; duration 2, note = A
+    e4        ; inc octave
+    23        ; duration 2, note = D
+    26        ; duration 2, note = F
+    23        ; duration 2, note = D
+    23        ; duration 2, note = D
+    e3        ; dec octave
+    2c        ; duration 2, note = B
+    e4        ; inc octave
+    23        ; duration 2, note = D
+    28        ; duration 2, note = G
+    23        ; duration 2, note = D
+    e3        ; dec octave
+    2a        ; duration 2, note = A
+    e4        ; inc octave
+    23        ; duration 2, note = D
+    e3        ; dec octave
+    2a        ; duration 2, note = A
+    e4        ; inc octave
+    23        ; duration 2, note = D
+    26        ; duration 2, note = F
+    23        ; duration 2, note = D
+    e3        ; dec octave
+    2a        ; duration 2, note = A
+    e4        ; inc octave
+    23        ; duration 2, note = D
+    e3        ; dec octave
+    2c        ; duration 2, note = B
+    e4        ; inc octave
+    23        ; duration 2, note = D
+    28        ; duration 2, note = G
+    23        ; duration 2, note = D
+    e3        ; dec octave
+    2c        ; duration 2, note = B
+    e4        ; inc octave
+    23        ; duration 2, note = D
+    e3        ; dec octave
+    2b        ; duration 2, note = A#
+    e4        ; inc octave
+    23        ; duration 2, note = D
+    26        ; duration 2, note = F
+    23        ; duration 2, note = D
+    e3        ; dec octave
+    2b        ; duration 2, note = A#
+    e4        ; inc octave
+    21        ; duration 2, note = C
+    e3        ; dec octave
+    28        ; duration 2, note = G
+    e4        ; inc octave
+    21        ; duration 2, note = C
+    25        ; duration 2, note = E
+    21        ; duration 2, note = C
+    e3        ; dec octave
+    28        ; duration 2, note = G
+    e4        ; inc octave
+    23        ; duration 2, note = D
+    e3        ; dec octave
+    2a        ; duration 2, note = A
+    e4        ; inc octave
+    23        ; duration 2, note = D
+    27        ; duration 2, note = F#
+    23        ; duration 2, note = D
+    e3        ; dec octave
+    2a        ; duration 2, note = A
+    e4        ; inc octave
+    23        ; duration 2, note = D
+    e3        ; dec octave
+    2a        ; duration 2, note = A
+    e4        ; inc octave
+    23        ; duration 2, note = D
+    27        ; duration 2, note = F#
+    23        ; duration 2, note = D
+    e3        ; dec octave
+    2a        ; duration 2, note = A
+    e4        ; inc octave
+    23        ; duration 2, note = D
+    e3        ; dec octave
+    2b        ; duration 2, note = A#
+    e4        ; inc octave
+    23        ; duration 2, note = D
+    26        ; duration 2, note = F
+    23        ; duration 2, note = D
+    e3        ; dec octave
+    2b        ; duration 2, note = A#
+    e4        ; inc octave
+    25        ; duration 2, note = E
+    21        ; duration 2, note = C
+    25        ; duration 2, note = E
+    28        ; duration 2, note = G
+    25        ; duration 2, note = E
+    21        ; duration 2, note = C
+    23        ; duration 2, note = D
+    e3        ; dec octave
+    2c        ; duration 2, note = B
+    e4        ; inc octave
+    23        ; duration 2, note = D
+    28        ; duration 2, note = G
+    23        ; duration 2, note = D
+    e3        ; dec octave
+    2c        ; duration 2, note = B
+    e4        ; inc octave
+    23        ; duration 2, note = D
+    e3        ; dec octave
+    2c        ; duration 2, note = B
+    e4        ; inc octave
+    23        ; duration 2, note = D
+    28        ; duration 2, note = G
+    23        ; duration 2, note = D
+    e3        ; dec octave
+    2c        ; duration 2, note = B
+    e4        ; inc octave
+    23        ; duration 2, note = D
+    e3        ; dec octave
+    2c        ; duration 2, note = B
+    e4        ; inc octave
+    23        ; duration 2, note = D
+    28        ; duration 2, note = G
+    23        ; duration 2, note = D
+    e3        ; dec octave
+    2c        ; duration 2, note = B
+    e4        ; inc octave
+    23        ; duration 2, note = D
+    e3        ; dec octave
+    2c        ; duration 2, note = B
+    e4        ; inc octave
+    23        ; duration 2, note = D
+    28        ; duration 2, note = G
+    23        ; duration 2, note = D
+    e3        ; dec octave
+    2c        ; duration 2, note = B
+    e4        ; inc octave
+    f4 01 01 pattern_psg1_2d  ; 05 10, if $000B = $01 and jump to $0143 (track# + $1005 = $147b and $147b - $133d = $013e)
+    fc pattern_psg1_2a    ; a9 10, save return address and jump to $01e2 (track# + $10a9 = $151f and $151f - $133d = $01e2)
+    fb pattern_psg1_2e    ; d2 0e, jump to $000b (track# + $0ed2 = $1348 and $1348 - $133d = $000b)
+pattern_psg1_2d:
+    f0 00       ; get duration LUT 0
+    fc pattern_psg1_2a    ; a9 10, save return address and jump to $01e2 (track# + $10a9 = $151f and $151f - $133d = $01e2)
+pattern_psg1_2c:
+    f0 00     ; get duration LUT 0
+    81        ; get psg preset $0
+    d3        ; set octave to 3
+    25        ; duration 2, note = E
+    25        ; duration 2, note = E
+    f0 07     ; get duration LUT 7
+    00        ; NOP
+    75        ; duration 7, note = E
+    71        ; duration 7, note = C
+    71        ; duration 7, note = C
+    30        ; duration 3, note = rest
+    e3        ; dec octave
+    18        ; duration 1, note = G
+    7a        ; duration 7, note = A
+    7a        ; duration 7, note = A
+    00        ; NOP
+    7a        ; duration 7, note = A
+    e4        ; inc octave
+    73        ; duration 7, note = D
+    75        ; duration 7, note = E
+    20        ; duration 2, note = rest
+    e3        ; dec octave
+    7c        ; duration 7, note = B
+    e4        ; inc octave
+    73        ; duration 7, note = D
+    e3        ; dec octave
+    7c        ; duration 7, note = B
+    e4        ; inc octave
+    75        ; duration 7, note = E
+    75        ; duration 7, note = E
+    20        ; duration 2, note = rest
+    75        ; duration 7, note = E
+    10        ; duration 1, note = rest
+    71        ; duration 7, note = C
+    71        ; duration 7, note = C
+    30        ; duration 3, note = rest
+    e3        ; dec octave
+    1a        ; duration 1, note = A
+    e4        ; inc octave
+    73        ; duration 7, note = D
+    73        ; duration 7, note = D
+    20        ; duration 2, note = rest
+    e3        ; dec octave
+    7c        ; duration 7, note = B
+    70        ; duration 7, note = rest
+    7c        ; duration 7, note = B
+    e4        ; inc octave
+    cc        ; set relative volume (-4)
+    75        ; duration 7, note = E
+    c0        ; set relative volume (0)
+    75        ; duration 7, note = E
+    c0        ; set relative volume (0)
+    75        ; duration 7, note = E
+    c0        ; set relative volume (0)
+    75        ; duration 7, note = E
+    c0        ; set relative volume (0)
+    75        ; duration 7, note = E
+    75        ; duration 7, note = E
+    e4        ; inc octave
+    65 e7     ; duration 6, note = E with sustain flag
+    64 e7     ; duration 6, note = D# with sustain flag
+    63 e7     ; duration 6, note = D with sustain flag
+    62 e7     ; duration 6, note = C# with sustain flag
+    61 e7     ; duration 6, note = C with sustain flag
+    e3        ; dec octave
+    6c        ; duration 6, note = B
+    e4        ; inc octave
+    80        ; psg preset $0
+    fc pattern_psg1_2f    ; eb 10, save return address and jump to $0224 (track# + $10eb = $1561 and $1561 - $133d = $0224)
+    e3        ; dec octave
+    78        ; duration 7, note = G
+    e4        ; inc octave
+    75        ; duration 7, note = E
+    7c        ; duration 7, note = B
+    15        ; duration 1, note = E
+    78        ; duration 7, note = G
+    e3        ; dec octave
+    7c        ; duration 7, note = B
+    e4        ; inc octave
+    75        ; duration 7, note = E
+    fc pattern_psg1_2f    ; eb 10, save return address and jump to $0224 (track# + $10eb = $1561 and $1561 - $133d = $0224)
+    71        ; duration 7, note = C
+    78        ; duration 7, note = G
+    e4        ; inc octave
+    75        ; duration 7, note = E
+    e3        ; dec octave
+    e3        ; dec octave
+    1a        ; duration 1, note = A
+    e4        ; inc octave
+    e4        ; inc octave
+    71        ; duration 7, note = C
+    e3        ; dec octave
+    75        ; duration 7, note = E
+    78        ; duration 7, note = G
+    fc pattern_psg1_2g    ; 15 11, save return address and jump to $024e (track# + $1115 = $158b and $158b - $133d = $024e)
+    7c        ; duration 7, note = B
+    1c        ; duration 1, note = B
+    1c        ; duration 1, note = B
+    7c        ; duration 7, note = B
+    7c        ; duration 7, note = B
+    4c        ; duration 4, note = B
+    4c        ; duration 4, note = B
+    e4        ; inc octave
+    71        ; duration 7, note = C
+    11        ; duration 1, note = C
+    11        ; duration 1, note = C
+    71        ; duration 7, note = C
+    71        ; duration 7, note = C
+    41        ; duration 4, note = C
+    41        ; duration 4, note = C
+    e3        ; dec octave
+    7c        ; duration 7, note = B
+    1c        ; duration 1, note = B
+    1c        ; duration 1, note = B
+    7c        ; duration 7, note = B
+    7c        ; duration 7, note = B
+    4c        ; duration 4, note = B
+    4c        ; duration 4, note = B
+    e4        ; inc octave
+    fc pattern_psg1_2g    ; 15 11, save return address and jump to $024e (track# + $1115 = $158b and $158b - $133d = $024e)
+    7b        ; duration 7, note = A#
+    1b        ; duration 1, note = A#
+    1b        ; duration 1, note = A#
+    7b        ; duration 7, note = A#
+    7b        ; duration 7, note = A#
+    4b        ; duration 4, note = A#
+    4b        ; duration 4, note = A#
+    7c        ; duration 7, note = B
+    1c        ; duration 1, note = B
+    1c        ; duration 1, note = B
+    7c        ; duration 7, note = B
+    7c        ; duration 7, note = B
+    4c        ; duration 4, note = B
+    4c        ; duration 4, note = B
+    79        ; duration 7, note = G#
+    19        ; duration 1, note = G#
+    19        ; duration 1, note = G#
+    79        ; duration 7, note = G#
+    79        ; duration 7, note = G#
+    49        ; duration 4, note = G#
+    49        ; duration 4, note = G#
+    fb pattern_psg1_2c    ; 0a 10, jump to $0143 (track# + $100a = $1480 and $1480 - $133d = $0143)
+pattern_psg1_2a:
+    f0 07     ; get duration LUT 7
+    71        ; duration 7, note = C
+    75        ; duration 7, note = E
+    78        ; duration 7, note = G
+    70        ; duration 7, note = rest
+    e3        ; dec octave
+    7a        ; duration 7, note = A
+    e4        ; inc octave
+    78        ; duration 7, note = G
+    e3        ; dec octave
+    7a        ; duration 7, note = A
+    e4        ; inc octave
+    71        ; duration 7, note = C
+    76        ; duration 7, note = F
+    70        ; duration 7, note = rest
+    e3        ; dec octave
+    76        ; duration 7, note = F
+    e4        ; inc octave
+    76        ; duration 7, note = F
+    e3        ; dec octave
+    7c        ; duration 7, note = B
+    e4        ; inc octave
+    73        ; duration 7, note = D
+    73        ; duration 7, note = D
+    70        ; duration 7, note = rest
+    e3        ; dec octave
+    78        ; duration 7, note = G
+    e4        ; inc octave
+    73        ; duration 7, note = D
+    71        ; duration 7, note = C
+    75        ; duration 7, note = E
+    78        ; duration 7, note = G
+    70        ; duration 7, note = rest
+    e3        ; dec octave
+    7a        ; duration 7, note = A
+    e4        ; inc octave
+    75        ; duration 7, note = E
+    fe        ; return
+pattern_psg1_2b:
+    f0 07     ; get duration LUT 7
+    75        ; duration 7, note = E
+    75        ; duration 7, note = E
+    75        ; duration 7, note = E
+    75        ; duration 7, note = E
+    75        ; duration 7, note = E
+    75        ; duration 7, note = E
+    73        ; duration 7, note = D
+    73        ; duration 7, note = D
+    73        ; duration 7, note = D
+    73        ; duration 7, note = D
+    73        ; duration 7, note = D
+    73        ; duration 7, note = D
+    71        ; duration 7, note = D
+    71        ; duration 7, note = D
+    71        ; duration 7, note = D
+    71        ; duration 7, note = D
+    71        ; duration 7, note = D
+    71        ; duration 7, note = D
+    75        ; duration 7, note = E
+    75        ; duration 7, note = E
+    75        ; duration 7, note = E
+    75        ; duration 7, note = E
+    75        ; duration 7, note = E
+    75        ; duration 7, note = E
+    fe        ; return
+pattern_psg1_2f:
+    f0 07     ; get duration LUT 7
+    71        ; duration 7, note = D
+    78        ; duration 7, note = G
+    e4        ; inc octave
+    75        ; duration 7, note = E
+    e3        ; dec octave
+    e3        ; dec octave
+    1a        ; duration 1, note = A
+    e4        ; inc octave
+    e4        ; inc octave
+    71        ; duration 7, note = D
+    e3        ; dec octave
+    75        ; duration 7, note = E
+    78        ; duration 7, note = G
+    e3        ; dec octave
+    7a        ; duration 7, note = A
+    e4        ; inc octave
+    76        ; duration 7, note = F
+    e4        ; inc octave
+    71        ; duration 7, note = D
+    e3        ; dec octave
+    e3        ; dec octave
+    1a        ; duration 1, note = A
+    e4        ; inc octave
+    7a        ; duration 7, note = A
+    71        ; duration 7, note = D
+    76        ; duration 7, note = F
+    e3        ; dec octave
+    7c        ; duration 7, note = B
+    e4        ; inc octave
+    78        ; duration 7, note = G
+    e4        ; inc octave
+    73        ; duration 7, note = D
+    e3        ; dec octave
+    13        ; duration 1, note = D
+    7c        ; duration 7, note = B
+    e3        ; dec octave
+    7c        ; duration 7, note = B
+    e4        ; inc octave
+    78        ; duration 7, note = G
+    fe        ; return
+pattern_psg1_2g:
+    f0 07     ; get duration LUT 7
+    75        ; duration 7, note = E
+    15        ; duration 1, note = E
+    15        ; duration 1, note = E
+    75        ; duration 7, note = E
+    75        ; duration 7, note = E
+    45        ; duration 4, note E
+    45        ; duration 4, note E
+    73        ; duration 7, note = D
+    13        ; duration 1, note = D
+    13        ; duration 1, note = D
+    73        ; duration 7, note = D
+    73        ; duration 7, note = D
+    43        ; duration 4, note = D
+    43        ; duration 4, note = D
+    71        ; duration 7, note = D
+    11        ; duration 1, note = C
+    11        ; duration 1, note = C
+    71        ; duration 7, note = D
+    71        ; duration 7, note = D
+    41        ; duration 4, note = C
+    41        ; duration 4, note = C
+    e3        ; dec octave
+    7c        ; duration 7, note = B
+    1c        ; duration 1, note = B
+    1c        ; duration 1, note = B
+    7c        ; duration 7, note = B
+    7c        ; duration 7, note = B
+    4c        ; duration 4, note = B
+    4c        ; duration 4, note = B
+    7a        ; duration 7, note = A
+    1a        ; duration 1, note = A
+    1a        ; duration 1, note = A
+    7a        ; duration 7, note = A
+    7a        ; duration 7, note = A
+    4a        ; duration 4, note = A
+    4a        ; duration 4, note = A
+    fe        ; return
+
+; PSG2
+    f0 00     ; get duration LUT 0
+    80        ; get psg preset $0
+    d2        ; set octave to 2
+    e5 25     ; set volume to $25
+    cd        ; set relative volume to -3
+    f0 0c     ; get duration LUT 12
+    00        ; NOP
+    fc pattern_psg0_psg2  ; 34 0e, save return address and jump to -$0308 (track# + $0e34 = $12aa and $12aa - $15b2 = -$0308)
+pattern_psg2_2c:
+    f0 0c     ; get duration LUT 12
+    d2        ; set octave to 2
+    fc pattern_psg0_psg2  ; 34 0e, save return address and jump to -$0308 (track# + $0e34 = $12aa and $12aa - $15b2 = -$0308)
+    e4        ; inc octave
+    e5 2d     ; set volume to $2d
+    cd        ; set relative volume to -3
+    fc pattern_psg0_psg2  ; 34 0e, save return address and jump to -$0308 (track# + $0e34 = $12aa and $12aa - $15b2 = -$0308)
+    fc pattern_psg0_psg2  ; 34 0e, save return address and jump to -$0308 (track# + $0e34 = $12aa and $12aa - $15b2 = -$0308)
+    fc pattern_psg0_psg2  ; 34 0e, save return address and jump to -$0308 (track# + $0e34 = $12aa and $12aa - $15b2 = -$0308)
+    1a        ; duration 1, note = A
+    e4        ; inc octave
+    15        ; duration 1, note = E
+    1c        ; duration 1, note = B
+    e3        ; dec octave
+    35        ; duration 3, note = E
+    e4        ; inc octave
+    1c        ; duration 1, note = B
+    e3        ; dec octave
+    16        ; duration 1, note = F
+    e4        ; inc octave
+    11        ; duration 1, note = C
+    1a        ; duration 1, note = A
+    e3        ; dec octave
+    31        ; duration 3, note = C
+    e4        ; inc octave
+    1a        ; duration 1, note = A
+    e3        ; dec octave
+    18        ; duration 1, note = G
+    e4        ; inc octave
+    13        ; duration 1, note = D
+    18        ; duration 1, note = G
+    e3        ; dec octave
+    38        ; duration 3, note = G
+    e4        ; inc octave
+    18        ; duration 1, note = G
+    12        ; duration 1, note = C#
+    15        ; duration 1, note = E
+    e4        ; inc octave
+    12        ; duration 1, note = C#
+    e3        ; dec octave
+    1a        ; duration 1, note = A
+    e4        ; inc octave
+    15        ; duration 1, note = E
+    e3        ; dec octave
+    1a        ; duration 1, note = A
+    d3        ; set octave to 3
+    fc pattern_psg2_2a    ; c5 12, save return address and jump to $189 (track# + $12c5 = $173b and $173b - $15b2 = $0189)
+    1a        ; duration 1, note = A
+    16        ; duration 1, note = F
+    1a        ; duration 1, note = A
+    16        ; duration 1, note = F
+    1a        ; duration 1, note = A
+    16        ; duration 1, note = F
+    18        ; duration 1, note = G
+    13        ; duration 1, note = D
+    18        ; duration 1, note = G
+    13        ; duration 1, note = D
+    18        ; duration 1, note = G
+    13        ; duration 1, note = D
+    18        ; duration 1, note = G
+    15        ; duration 1, note = E
+    18        ; duration 1, note = G
+    15        ; duration 1, note = E
+    18        ; duration 1, note = G
+    15        ; duration 1, note = E
+    18        ; duration 1, note = G
+    13        ; duration 1, note = D
+    18        ; duration 1, note = G
+    13        ; duration 1, note = D
+    18        ; duration 1, note = G
+    13        ; duration 1, note = D
+    fc pattern_psg2_2a    ; c5 12, save return address and jump to $189 (track# + $12c5 = $173b and $173b - $15b2 = $0189)
+    11        ; duration 1, note = C
+    16        ; duration 1, note = F
+    1a        ; duration 1, note = A
+    16        ; duration 1, note = F
+    e4        ; inc octave
+    11        ; duration 1, note = C
+    e3        ; dec octave
+    1a        ; duration 1, note = A
+    e3        ; dec octave
+    1b        ; duration 1, note = A#
+    e4        ; inc octave
+    13        ; duration 1, note = D
+    16        ; duration 1, note = F
+    13        ; duration 1, note = D
+    1b        ; duration 1, note = A#
+    16        ; duration 1, note = F
+    e4        ; inc octave
+    15        ; duration 1, note = E
+    1a        ; duration 1, note = A
+    1c        ; duration 1, note = B
+    e4        ; inc octave
+    13        ; duration 1, note = D
+    e3        ; dec octave
+    1c        ; duration 1, note = B
+    1a        ; duration 1, note = A
+    15        ; duration 1, note = E
+    1a        ; duration 1, note = A
+    1c        ; duration 1, note = B
+    e4        ; inc octave
+    11        ; duration 1, note = C
+    53        ; duration 5, note = D
+    f4 01 01 pattern_psg2_2d  ; 76 12, if table[1] = $01 and jump to $013a (track# + $1276 = $16ec and $16ec - $15b2 = $013a)
+    e7        ; set flag bit 5 in envelope flags
+    53        ; duration 5, note = D
+    15        ; duration 1, note = E
+    d2        ; set octave to 2
+    fc pattern_psg0_psg2  ; 34 0e, save return address and jump to -$0308 (track# + $0e34 = $12aa and $12aa - $15b2 = -$0308)
+    1a        ; duration 1, note = A
+    e4        ; inc octave
+    15        ; duration 1, note = E
+    1c        ; duration 1, note = B
+    e3        ; dec octave
+    35        ; duration 3, note = E
+    e4        ; inc octave
+    1c        ; duration 1, note = B
+    e3        ; dec octave
+    16        ; duration 1, note = F
+    e4        ; inc octave
+    11        ; duration 1, note = C
+    1a        ; duration 1, note = A
+    e3        ; dec octave
+    31        ; duration 3, note = C
+    e4        ; inc octave
+    1a        ; duration 1, note = A
+    e3        ; dec octave
+    18        ; duration 1, note = G
+    e4        ; inc octave
+    13        ; duration 1, note = D
+    18        ; duration 1, note = G
+    e3        ; dec octave
+    33        ; duration 3, note = D
+    e4        ; inc octave
+    18        ; duration 1, note = G
+    e3        ; dec octave
+    1a        ; duration 1, note = A
+    e4        ; inc octave
+    15        ; duration 1, note = E
+    e4        ; inc octave
+    12        ; duration 1, note = C#
+    e3        ; dec octave
+    e3        ; dec octave
+    35        ; duration 3, note = E
+    e4        ; inc octave
+    1a        ; duration 1, note = A
+    13        ; duration 1, note = D
+    e3        ; dec octave
+    1a        ; duration 1, note = A
+    e4        ; inc octave
+    13        ; duration 1, note = D
+    16        ; duration 1, note = F
+    1a        ; duration 1, note = A
+    16        ; duration 1, note = F
+    18        ; duration 1, note = G
+    13        ; duration 1, note = D
+    18        ; duration 1, note = G
+    1c        ; duration 1, note = B
+    18        ; duration 1, note = G
+    13        ; duration 1, note = D
+    16        ; duration 1, note = F
+    11        ; duration 1, note = C
+    16        ; duration 1, note = F
+    1a        ; duration 1, note = A
+    16        ; duration 1, note = F
+    11        ; duration 1, note = C
+    18        ; duration 1, note = G
+    13        ; duration 1, note = D
+    18        ; duration 1, note = G
+    1c        ; duration 1, note = B
+    18        ; duration 1, note = G
+    13        ; duration 1, note = D
+    16        ; duration 1, note = F
+    13        ; duration 1, note = D
+    16        ; duration 1, note = F
+    1a        ; duration 1, note = A
+    16        ; duration 1, note = F
+    13        ; duration 1, note = D
+    15        ; duration 1, note = E
+    11        ; duration 1, note = C
+    15        ; duration 1, note = E
+    18        ; duration 1, note = G
+    15        ; duration 1, note = E
+    11        ; duration 1, note = C
+    17        ; duration 1, note = F#
+    13        ; duration 1, note = D
+    17        ; duration 1, note = F#
+    1a        ; duration 1, note = A
+    17        ; duration 1, note = F#
+    13        ; duration 1, note = D
+    17        ; duration 1, note = F#
+    13        ; duration 1, note = D
+    17        ; duration 1, note = F#
+    1a        ; duration 1, note = A
+    17        ; duration 1, note = F#
+    13        ; duration 1, note = D
+    16        ; duration 1, note = F
+    13        ; duration 1, note = D
+    16        ; duration 1, note = F
+    1a        ; duration 1, note = A
+    16        ; duration 1, note = F
+    13        ; duration 1, note = D
+    18        ; duration 1, note = G
+    15        ; duration 1, note = E
+    18        ; duration 1, note = G
+    e4        ; inc octave
+    11        ; duration 1, note = C
+    e3        ; dec octave
+    18        ; duration 1, note = G
+    15        ; duration 1, note = E
+    18        ; duration 1, note = G
+    13        ; duration 1, note = D
+    18        ; duration 1, note = G
+    1c        ; duration 1, note = B
+    18        ; duration 1, note = G
+    13        ; duration 1, note = D
+    18        ; duration 1, note = G
+    13        ; duration 1, note = D
+    18        ; duration 1, note = G
+    1c        ; duration 1, note = B
+    18        ; duration 1, note = G
+    13        ; duration 1, note = D
+    18        ; duration 1, note = G
+    13        ; duration 1, note = D
+    18        ; duration 1, note = G
+    1c        ; duration 1, note = B
+    18        ; duration 1, note = G
+    13        ; duration 1, note = D
+    18        ; duration 1, note = G
+    13        ; duration 1, note = D
+    18        ; duration 1, note = G
+    1c        ; duration 1, note = B
+    18        ; duration 1, note = G
+    13        ; duration 1, note = D
+    e3        ; dec octave
+    f4 01 01 pattern_psg2_2b  ; 53 12, if table[1] = $01 and jump to $0117 (track# + $1253 = $16c9 and $16c9 - $15b2 = $0117)
+    fc pattern_psg0_psg2           ; 34 0e, save return address and jump to -$0308 (track# + $0e34 = $12aa and $12aa - $15b2 = -$0308)
+    fb pattern_psg2_2c        ; 49 11, jump to $000d (track# + $1149 = $15bf and $15bf - $15b2 = $000d)
+pattern_psg2_2b:
+    f0 0c     ; get duration LUT 12
+    1a        ; duration 1, note = A
+    e4        ; inc octave
+    15        ; duration 1, note = E
+    1c        ; duration 1, note = B
+    e3        ; dec octave
+    35        ; duration 3, note = E
+    e4        ; inc octave
+    1c        ; duration 1, note = B
+    e3        ; dec octave
+    16        ; duration 1, note = F
+    e4        ; inc octave
+    11        ; duration 1, note = C
+    1a        ; duration 1, note = A
+    e3        ; dec octave
+    31        ; duration 3, note = C
+    e4        ; inc octave
+    1a        ; duration 1, note = A
+    e3        ; dec octave
+    18        ; duration 1, note = G
+    e4        ; inc octave
+    13        ; duration 1, note = D
+    18        ; duration 1, note = G
+    e3        ; dec octave
+    33        ; duration 3, note = D
+    e4        ; inc octave
+    18        ; duration 1, note = G
+    e3        ; dec octave
+    1a        ; duration 1, note = A
+    e4        ; inc octave
+    15        ; duration 1, note = E
+    1c        ; duration 1, note = B
+    e3        ; dec octave
+    05        ; duration 0, note = E
+pattern_psg2_2d:
+    f0 0c     ; get duration LUT 12
+    82        ; get psg preset $2 (noise)
+    d4        ; set octave to 4
+    e5 1d     ; set volume to $1d
+    fc pattern_psg2_2e        ; e0 12, save return address and jump to $1a4 (track# + $12e0 = $1756 and $1756 - $15b2 = $01a4)
+    f0 0e     ; get duration LUT 14
+    70        ; duration 7, note = rest
+    f0 0f     ; get duration LUT 15
+    71        ; duration 7, note = C
+    f0 13     ; get duration LUT 19
+    01        ; duration 0, note = C
+    fc pattern_psg2_2e        ; e0 12, save return address and jump to $1a4 (track# + $12e0 = $1756 and $1756 - $15b2 = $01a4)
+    10        ; duration 1, note = rest
+    cd        ; set relative volume to -3
+    21        ; duration 2, note = C
+    c0        ; set relative volume (0)
+    21        ; duration 2, note = C
+    c0        ; set relative volume (0)
+    21        ; duration 2, note = C
+    c0        ; set relative volume (0)
+    21        ; duration 2, note = C
+    c8        ; set relative volume to 8
+    cd        ; set relative volume to -3
+    fc pattern_psg2_2f    ; e9 12, save return address and jump to $1ad (track# + $12e9 = $175f and $175f - $15b2 = $01ad)
+    35        ; duration 3, note = E
+    3c        ; duration 3, note = B
+    e4        ; inc octave
+    38        ; duration 3, note = G
+    e3        ; dec octave
+    2c        ; duration 2, note = B
+    e4        ; inc octave
+    35        ; duration 3, note = E
+    e3        ; dec octave
+    48        ; duration 4, note = G
+    e4        ; inc octave
+    fc pattern_psg2_2f    ; e9 12, save return address and jump to $1ad (track# + $12e9 = $175f and $175f - $15b2 = $01ad)
+    3a        ; duration 3, note = A
+    e4        ; inc octave
+    35        ; duration 3, note = E
+    3c        ; duration 3, note = B
+    e3        ; dec octave
+    25        ; duration 2, note = E
+    e4        ; inc octave
+    3a        ; duration 3, note = A
+    e3        ; dec octave
+    4a        ; duration 4, note = A
+    e4        ; inc octave
+    82        ; get psg preset $2 (noise)
+    c7        ; set relative volume to 7
+    c2        ; set relative volume to 2
+    51        ; duration 5, note = C
+    60        ; duration 6, note = rest
+    70        ; duration 7, note = rest
+    f0 14     ; get duration LUT 20
+    00        ; NOP
+    11        ; duration 1, note = C
+    21        ; duration 2, note = C
+    30        ; duration 3, note = rest
+    40        ; duration 4, note = rest
+    21        ; duration 2, note = C
+    50        ; duration 5, note = rest
+    11        ; duration 1, note = C
+    fb pattern_psg2_2d    ; 76 12, jump to $000d (track# + $1276 = $16ec and $16ec - $15b2 = $013a)
+pattern_psg2_2a:
+    f0 14     ; get duration LUT 20
+    68        ; duration 6, note = G
+    65        ; duration 6, note = E
+    68        ; duration 6, note = G
+    65        ; duration 6, note = E
+    68        ; duration 6, note = G
+    65        ; duration 6, note = E
+    68        ; duration 6, note = G
+    63        ; duration 6, note = D
+    68        ; duration 6, note = G
+    63        ; duration 6, note = D
+    68        ; duration 6, note = G
+    63        ; duration 6, note = D
+    6a        ; duration 6, note = A
+    65        ; duration 6, note = E
+    6a        ; duration 6, note = A
+    65        ; duration 6, note = E
+    6a        ; duration 6, note = A
+    65        ; duration 6, note = E
+    68        ; duration 6, note = G
+    65        ; duration 6, note = E
+    68        ; duration 6, note = G
+    65        ; duration 6, note = E
+    68        ; duration 6, note = G
+    65        ; duration 6, note = E
+    fe        ; return
+pattern_psg2_2e:
+    f0 14     ; get duration LUT 20
+    61        ; duration 6, note = C 
+    61        ; duration 6, note = C
+    70        ; duration 7, note = rest
+    61        ; duration 6, note = C
+    61        ; duration 6, note = C
+    70        ; duration 7, note = rest
+    fe        ; return
+pattern_psg2_2f:
+    f0 14     ; get duration LUT 20
+    82        ; get psg preset $2 (noise)
+    c7        ; set relative volume to 7
+    c2        ; set relative volume to 2
+    21        ; duration 2, note = C
+    f0 15     ; get duration LUT 21
+    00        ; NOP
+    80        ; get psg preset $0
+    c8        ; set relative volume to -8
+    cd        ; set relative volume to -3
+    e3        ; dec octave
+    15        ; duration 1, note = E
+    e4        ; inc octave
+    1a        ; duration 1, note = A
+    e3        ; dec octave
+    1a        ; duration 1, note = A
+    e4        ; inc octave
+    15        ; duration 1, note = E
+    e3        ; dec octave
+    16        ; duration 1, note = F
+    e4        ; inc octave
+    11        ; duration 1, note = C
+    1a        ; duration 1, note = A
+    e3        ; dec octave
+    26        ; duration 2, note = F
+    e4        ; inc octave
+    16        ; duration 1, note = F
+    e3        ; dec octave
+    1a        ; duration 1, note = A
+    e4        ; inc octave
+    11        ; duration 1, note = C
+    e3        ; dec octave
+    18        ; duration 1, note = G
+    e4        ; inc octave
+    13        ; duration 1, note = D
+    1a        ; duration 1, note = A
+    e3        ; dec octave
+    2c        ; duration 2, note = B
+    e4        ; inc octave
+    18        ; duration 1, note = G
+    e3        ; dec octave
+    18        ; duration 1, note = G
+    e4        ; inc octave
+    13        ; duration 1, note = D
+    e3        ; dec octave
+    fe        ; return
+

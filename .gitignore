@@ -3,8 +3,11 @@
 original
 new
 bldX68k
+documents
 
+#assembler files
 *.o
+*.lst
 
 # Default ignored files
 /shelf/

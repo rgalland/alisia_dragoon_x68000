@@ -360,7 +360,7 @@ psg_noise_table:
     dc.b    $04,$04,$04,$04,$05,$05,$05,$05
     dc.b    $06,$06,$06,$06
 
-; Preset structure — 37 bytes total
+; FM Preset structure — 37 bytes total
 ; Offset  Size  Field                   Driver usage
 ; ------  ----  -----                   ------------
 ;  0       1    Vibrato param byte      snd_load_preset → d1 → ecmd_E2_arp_params
@@ -381,6 +381,19 @@ psg_noise_table:
 ; 32       4    SSG-EG                  skipped (adda #4,a3)
 ; 36       1    FB/ALGO                 → OPM $20+ (with L/R bits ORed in)
 ;
+; PSG Preset structure — 37 bytes total
+; Offset  Size  Field                   Driver usage
+; ------  ----  -----                   ------------
+;  6       1                            TODO tied to CH_PORT_BASE_CTR at the moment
+;  7       1                            TODO tied to CH_LR_AMS_PMS at the moment
+;  8       1                            TODO tied to CH_PORT_CTR_STEP at the moment
+;  9       1                            TODO tied to CH_PORT_CTR_STEP at the moment
+; 10       1                            TODO tied to CH_PORT_BASE_CTR at the moment
+; 11       1                            TODO tied to CH_LR_AMS_PMS at the moment
+; 12       1    Attenuation bits mask   bits 7-4 subtracted from attenuation bits during key off
+; 13       1    Attenuation bits        bits 7-4 when set, attenuation is added during calculation for each set bit
+; 14       1    PSG flags               saved to CH_PSG_FLAGS when loading preset
+; 15       1    PSG Noise value         bits 4-3 = Noise clk src,
 
 ; Design methods that I tried to stick to prevent addressing issues:
 ; a4 = music/sfx block pointer
@@ -2229,13 +2242,18 @@ snd_setup_arp:
 
 snd_force_arp_setup:
     bclr.b  #2,(CH_FLAGS,a4)
-
     ; STEP = BASE_NOTE * ARP_INTERVAL
     moveq   #0,d0
-    move.b  (CH_VIB_BASE,a4),d0         ; d0 = VIB_BASE (1-12)
     moveq   #0,d1
+    move.b  (CH_VIB_BASE,a4),d0         ; d0 = VIB_BASE (1-12)
     move.b  (CH_ARP_INTERVAL,a4),d1     ; is this using chromatic interval?
     mulu.w  d1,d0                       ; d0 = VIB_BASE (1-12) * CH_ARP_INTERVAL
+    btst.b  #$5,(CH_CONFIG,a4)
+    beq     .save_targets
+    move    (CH_OCTAVE,a4),d1
+    beq     .save_targets
+    lsr.w   d1,d0
+.save_targets
     move.w  d0,(CH_VIB_STEP_UP,a4)      ; save target
     move.w  d0,(CH_VIB_STEP_DOWN,a4)    ; save target
 
@@ -2284,7 +2302,6 @@ snd_force_arp_setup:
     bset    #5,d4
     move.b  d4,(CH_FLAGS,a4)        ; set arpeggio active flag
 
-.midi_arp:  ; TODO
 .vib_setup_done
     rts
 

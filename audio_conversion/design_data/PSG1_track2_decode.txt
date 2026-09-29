@@ -1,0 +1,580 @@
+$0476	Track 2 (track#)
+$0c89	PSG0 offset from Track 2 addr
+$0ec7	PSG1 offset from Track 2 addr
+$113c	PSG2 offset from Track 2 addr
+
+$133d	PSG1 data stream addr in file
+$15b1   PSG1 end of stream
+
+0000: f0 00 - get duration LUT 0
+0002: 80 - get psg preset $0
+0003: d3 - set octave to 3
+0004: e5 25 - set volume to $25
+0006: e1 fd - finetune frequency -$03
+0008: fc a9 10 - save loop back address ($000b) and jump to $01e2 (track# + $10a9 = $151f and $151f - $133d = $01e2)
+000b: f0 00 - get duration LUT 0
+000d: fc a9 10 - save loop back address ($0010) and jump to $01e2 (track# + $10a9 = $151f and $151f - $133d = $01e2)
+0010: e5 2d - set volume to $2d
+0012: e4 - inc octave
+0013: fc a9 10 - save loop back address ($0016) and jump to $01e2 (track# + $10a9 = $151f and $151f - $133d = $01e2)
+0016: fc a9 10 - save loop back address ($0019) and jump to $01e2 (track# + $10a9 = $151f and $151f - $133d = $01e2)
+0019: fc a9 10 - save loop back address ($001c) and jump to $01e2 (track# + $10a9 = $151f and $151f - $133d = $01e2)
+001c: 21 - duration 2, note = C
+001d: 25 - duration 2, note = E
+001e: 28 - duration 2, note = G
+001f: 20 - duration 2, note = rest
+0020: e3 - dec octave
+0021: 2a - duration 2, note = A
+0022: e4 - inc octave
+0023: 28 - duration 2, note = G
+0024: e3 - dec octave
+0025: 2a - duration 2, note = A
+0026: e4 - inc octave
+0027: 21 - duration 2, note = C
+0028: 26 - duration 2, note = F
+0029: 20 - duration 2, note = rest
+002a: e3 - dec octave
+002b: 26 - duration 2, note = F
+002c: e4 - inc octave
+002d: 26 - duration 2, note = F
+002e: e3 - dec octave
+002f: 2c - duration 2, note = B
+0030: e4 - inc octave
+0031: 23 - duration 2, note = D
+0032: 23 - duration 2, note = D
+0033: 20 - duration 2, note = rest
+0034: e3 - dec octave
+0035: 28 - duration 2, note = G
+0036: e4 - inc octave
+0037: 23 - duration 2, note = D
+0038: 22 - duration 2, note = C#
+0039: 25 - duration 2, note = E
+003a: e4 - inc octave
+003b: 22 - duration 2, note = C#
+003c: e3 - dec octave
+003d: 25 - duration 2, note = E
+003e: 2a - duration 2, note = A
+003f: 25 - duration 2, note = E
+0040: d3 - set octave to 3
+0041: fc d0 10 - save loop back address ($0044) and jump to $0209 (track# + $10d0 = $1546 and $1546 - $133d = $0209)
+0044: 21 - duration 2, note = C
+0045: 21 - duration 2, note = C
+0046: 21 - duration 2, note = C
+0047: 21 - duration 2, note = C
+0048: 21 - duration 2, note = C
+0049: 21 - duration 2, note = C
+004a: 23 - duration 2, note = D
+004b: 23 - duration 2, note = D
+004c: 23 - duration 2, note = D
+004d: 23 - duration 2, note = D
+004e: 23 - duration 2, note = D
+004f: 23 - duration 2, note = D
+0050: 25 - duration 2, note = E
+0051: 25 - duration 2, note = E
+0052: 25 - duration 2, note = E
+0053: 25 - duration 2, note = E
+0054: 25 - duration 2, note = E
+0055: 25 - duration 2, note = E
+0056: 23 - duration 2, note = D
+0057: 23 - duration 2, note = D
+0058: 23 - duration 2, note = D
+0059: 23 - duration 2, note = D
+005a: 23 - duration 2, note = D
+005b: 23 - duration 2, note = D
+005c: fc d0 10 - save loop back address ($005f) and jump to $0209 (track# + $10d0 = $1546 and $1546 - $133d = $0209)
+005f: e3 - dec octave
+0060: 2a - duration 2, note = A
+0061: e4 - inc octave
+0062: 21 - duration 2, note = C
+0063: 26 - duration 2, note = F
+0064: 21 - duration 2, note = C
+0065: 2a - duration 2, note = A
+0066: 26 - duration 2, note = F
+0067: e3 - dec octave
+0068: 23 - duration 2, note = D
+0069: 2b - duration 2, note = A#
+006a: e4 - inc octave
+006b: 23 - duration 2, note = D
+006c: e3 - dec octave
+006d: 2b - duration 2, note = A#
+006e: e4 - inc octave
+006f: 26 - duration 2, note = F
+0070: 23 - duration 2, note = D
+0071: 2c - duration 2, note = B
+0072: e4 - inc octave
+0073: 25 - duration 2, note = E
+0074: 29 - duration 2, note = G#
+0075: 2c - duration 2, note = B
+0076: 29 - duration 2, note = G#
+0077: 25 - duration 2, note = E
+0078: e3 - dec octave
+0079: 2c - duration 2, note = B
+007a: e4 - inc octave
+007b: 21 - duration 2, note = C
+007c: 23 - duration 2, note = D
+007d: 25 - duration 2, note = E
+007e: 27 - duration 2, note = F#
+007f: 29 - duration 2, note = G#
+0080: f4 01 01 0a 10 - if $000B = $01 and jump to $0143 (track# + $100a = $1480 and $1480 - $133d = $0143)
+0085: d3 - set octave to 3
+0086: fc a9 10 - save loop back address ($0089) and jump to $01e2 (track# + $10a9 = $151f and $151f - $133d = $01e2)
+0089: 21 - duration 2, note = C
+008a: 25 - duration 2, note = E
+008b: 28 - duration 2, note = G
+008c: 20 - duration 2, note = rest
+008d: e3 - dec octave
+008e: 2a - duration 2, note = A
+008f: e4 - inc octave
+0090: 28 - duration 2, note = G
+0091: e3 - dec octave
+0092: 2a - duration 2, note = A
+0093: e4 - inc octave
+0094: 21 - duration 2, note = C
+0095: 26 - duration 2, note = F
+0096: 20 - duration 2, note = rest
+0097: e3 - dec octave
+0098: 26 - duration 2, note = F
+0099: e4 - inc octave
+009a: 26 - duration 2, note = F
+009b: e3 - dec octave
+009c: 2c - duration 2, note = B
+009d: e4 - inc octave
+009e: 23 - duration 2, note = D
+009f: 23 - duration 2, note = D
+00a0: 20 - duration 2, note = rest
+00a1: e3 - dec octave
+00a2: 28 - duration 2, note = G
+00a3: e4 - inc octave
+00a4: 23 - duration 2, note = D
+00a5: 22 - duration 2, note = C#
+00a6: 25 - duration 2, note = E
+00a7: 28 - duration 2, note = G
+00a8: 20 - duration 2, note = rest
+00a9: e3 - dec octave
+00aa: 2a - duration 2, note = A
+00ab: e4 - inc octave
+00ac: 25 - duration 2, note = E
+00ad: e3 - dec octave
+00ae: 2a - duration 2, note = A
+00af: 26 - duration 2, note = F
+00b0: 2a - duration 2, note = A
+00b1: e4 - inc octave
+00b2: 23 - duration 2, note = D
+00b3: 26 - duration 2, note = F
+00b4: 23 - duration 2, note = D
+00b5: 23 - duration 2, note = D
+00b6: e3 - dec octave
+00b7: 2c - duration 2, note = B
+00b8: e4 - inc octave
+00b9: 23 - duration 2, note = D
+00ba: 28 - duration 2, note = G
+00bb: 23 - duration 2, note = D
+00bc: e3 - dec octave
+00bd: 2a - duration 2, note = A
+00be: e4 - inc octave
+00bf: 23 - duration 2, note = D
+00c0: e3 - dec octave
+00c1: 2a - duration 2, note = A
+00c2: e4 - inc octave
+00c3: 23 - duration 2, note = D
+00c4: 26 - duration 2, note = F
+00c5: 23 - duration 2, note = D
+00c6: e3 - dec octave
+00c7: 2a - duration 2, note = A
+00c8: e4 - inc octave
+00c9: 23 - duration 2, note = D
+00ca: e3 - dec octave
+00cb: 2c - duration 2, note = B
+00cc: e4 - inc octave
+00cd: 23 - duration 2, note = D
+00ce: 28 - duration 2, note = G
+00cf: 23 - duration 2, note = D
+00d0: e3 - dec octave
+00d1: 2c - duration 2, note = B
+00d2: e4 - inc octave
+00d3: 23 - duration 2, note = D
+00d4: e3 - dec octave
+00d5: 2b - duration 2, note = A#
+00d6: e4 - inc octave
+00d7: 23 - duration 2, note = D
+00d8: 26 - duration 2, note = F
+00d9: 23 - duration 2, note = D
+00da: e3 - dec octave
+00db: 2b - duration 2, note = A#
+00dc: e4 - inc octave
+00dd: 21 - duration 2, note = C
+00de: e3 - dec octave
+00df: 28 - duration 2, note = G
+00e0: e4 - inc octave
+00e1: 21 - duration 2, note = C
+00e2: 25 - duration 2, note = E
+00e3: 21 - duration 2, note = C
+00e4: e3 - dec octave
+00e5: 28 - duration 2, note = G
+00e6: e4 - inc octave
+00e7: 23 - duration 2, note = D
+00e8: e3 - dec octave
+00e9: 2a - duration 2, note = A
+00ea: e4 - inc octave
+00eb: 23 - duration 2, note = D
+00ec: 27 - duration 2, note = F#
+00ed: 23 - duration 2, note = D
+00ee: e3 - dec octave
+00ef: 2a - duration 2, note = A
+00f0: e4 - inc octave
+00f1: 23 - duration 2, note = D
+00f2: e3 - dec octave
+00f3: 2a - duration 2, note = A
+00f4: e4 - inc octave
+00f5: 23 - duration 2, note = D
+00f6: 27 - duration 2, note = F#
+00f7: 23 - duration 2, note = D
+00f8: e3 - dec octave
+00f9: 2a - duration 2, note = A
+00fa: e4 - inc octave
+00fb: 23 - duration 2, note = D
+00fc: e3 - dec octave
+00fd: 2b - duration 2, note = A#
+00fe: e4 - inc octave
+00ff: 23 - duration 2, note = D
+0100: 26 - duration 2, note = F
+0101: 23 - duration 2, note = D
+0102: e3 - dec octave
+0103: 2b - duration 2, note = A#
+0104: e4 - inc octave
+0105: 25 - duration 2, note = E
+0106: 21 - duration 2, note = C
+0107: 25 - duration 2, note = E
+0108: 28 - duration 2, note = G
+0109: 25 - duration 2, note = E
+010a: 21 - duration 2, note = C
+010b: 23 - duration 2, note = D
+010c: e3 - dec octave
+010d: 2c - duration 2, note = B
+010e: e4 - inc octave
+010f: 23 - duration 2, note = D
+0110: 28 - duration 2, note = G
+0111: 23 - duration 2, note = D
+0112: e3 - dec octave
+0113: 2c - duration 2, note = B
+0114: e4 - inc octave
+0115: 23 - duration 2, note = D
+0116: e3 - dec octave
+0117: 2c - duration 2, note = B
+0118: e4 - inc octave
+0119: 23 - duration 2, note = D
+011a: 28 - duration 2, note = G
+011b: 23 - duration 2, note = D
+011c: e3 - dec octave
+011d: 2c - duration 2, note = B
+011e: e4 - inc octave
+011f: 23 - duration 2, note = D
+0120: e3 - dec octave
+0121: 2c - duration 2, note = B
+0122: e4 - inc octave
+0123: 23 - duration 2, note = D
+0124: 28 - duration 2, note = G
+0125: 23 - duration 2, note = D
+0126: e3 - dec octave
+0127: 2c - duration 2, note = B
+0128: e4 - inc octave
+0129: 23 - duration 2, note = D
+012a: e3 - dec octave
+012b: 2c - duration 2, note = B
+012c: e4 - inc octave
+012d: 23 - duration 2, note = D
+012e: 28 - duration 2, note = G
+012f: 23 - duration 2, note = D
+0130: e3 - dec octave
+0131: 2c - duration 2, note = B
+0132: e4 - inc octave
+0133: f4 01 01 05 10 - if $000B = $01 and jump to $0143 (track# + $1005 = $147b and $147b - $133d = $013e)
+0138: fc a9 10 - save loop back address ($013b) and jump to $01e2 (track# + $10a9 = $151f and $151f - $133d = $01e2)
+013b: fb d2 0e - jump to $000b (track# + $0ed2 = $1348 and $1348 - $133d = $000b)
+013e: f0 00 - get duration LUT 0
+0140: fc a9 10 - save loop back address ($0143) and jump to $01e2 (track# + $10a9 = $151f and $151f - $133d = $01e2)
+0143: f0 00 - get duration LUT 0
+0145: 81 - get psg preset $0
+0146: d3 - set octave to 3
+0147: 25 - duration 2, note = E
+0148: 25 - duration 2, note = E
+0149: f0 07 - get duration LUT 7
+014b: 00 - NOP
+014c: 75 - duration 7, note = E
+014d: 71 - duration 7, note = C
+014e: 71 - duration 7, note = C
+014f: 30 - duration 3, note = rest
+0150: e3 - dec octave
+0151: 18 - duration 1, note = G
+0152: 7a - duration 7, note = A
+0153: 7a - duration 7, note = A
+0154: 00 - NOP
+0155: 7a - duration 7, note = A
+0156: e4 - inc octave
+0157: 73 - duration 7, note = D
+0158: 75 - duration 7, note = E
+0159: 20 - duration 2, note = rest
+015a: e3 - dec octave
+015b: 7c - duration 7, note = B
+015c: e4 - inc octave
+015d: 73 - duration 7, note = D
+015e: e3 - dec octave
+015f: 7c - duration 7, note = B
+0160: e4 - inc octave
+0161: 75 - duration 7, note = E
+0162: 75 - duration 7, note = E
+0163: 20 - duration 2, note = rest
+0164: 75 - duration 7, note = E
+0165: 10 - duration 1, note = rest
+0166: 71 - duration 7, note = C
+0167: 71 - duration 7, note = C
+0168: 30 - duration 3, note = rest
+0169: e3 - dec octave
+016a: 1a - duration 1, note = A
+016b: e4 - inc octave
+016c: 73 - duration 7, note = D
+016d: 73 - duration 7, note = D
+016e: 20 - duration 2, note = rest
+016f: e3 - dec octave
+0170: 7c - duration 7, note = B
+0171: 70 - duration 7, note = rest
+0172: 7c - duration 7, note = B
+0173: e4 - inc octave
+0174: cc - set relative volume (-4)
+0175: 75 - duration 7, note = E
+0176: c0 - set relative volume (0)
+0177: 75 - duration 7, note = E
+0178: c0 - set relative volume (0)
+0179: 75 - duration 7, note = E
+017a: c0 - set relative volume (0)
+017b: 75 - duration 7, note = E
+017c: c0 - set relative volume (0)
+017d: 75 - duration 7, note = E
+017e: 75 - duration 7, note = E
+017f: e4 - inc octave
+0180: 65 e7 - duration 6, note = E with sustain flag
+0182: 64 e7 - duration 6, note = D# with sustain flag
+0184: 63 e7 - duration 6, note = D with sustain flag
+0186: 62 e7 - duration 6, note = C# with sustain flag
+0188: 61 e7 - duration 6, note = C with sustain flag
+018a: e3 - dec octave
+018b: 6c - duration 6, note = B
+018c: e4 - inc octave
+018d: 80 - get psg preset $0
+018e: fc eb 10 - save loop back address ($0191) and jump to $0224 (track# + $10eb = $1561 and $1561 - $133d = $0224)
+0191: e3 - dec octave
+0192: 78 - duration 7, note = G
+0193: e4 - inc octave
+0194: 75 - duration 7, note = E
+0195: 7c - duration 7, note = B
+0196: 15 - duration 1, note = E
+0197: 78 - duration 7, note = G
+0198: e3 - dec octave
+0199: 7c - duration 7, note = B
+019a: e4 - inc octave
+019b: 75 - duration 7, note = E
+019c: fc eb 10 - save loop back address ($019f) and jump to $0224 (track# + $10eb = $1561 and $1561 - $133d = $0224)
+019f: 71 - duration 7, note = C
+01a0: 78 - duration 7, note = G
+01a1: e4 - inc octave
+01a2: 75 - duration 7, note = E
+01a3: e3 - dec octave
+01a4: e3 - dec octave
+01a5: 1a - duration 1, note = A
+01a6: e4 - inc octave
+01a7: e4 - inc octave
+01a8: 71 - duration 7, note = C
+01a9: e3 - dec octave
+01aa: 75 - duration 7, note = E
+01ab: 78 - duration 7, note = G
+01ac: fc 15 11 - save loop back address ($01af) and jump to $024e (track# + $1115 = $158b and $158b - $133d = $024e)
+01af: 7c - duration 7, note = B
+01b0: 1c - duration 1, note = B
+01b1: 1c - duration 1, note = B
+01b2: 7c - duration 7, note = B
+01b3: 7c - duration 7, note = B
+01b4: 4c - duration 4, note = B
+01b5: 4c - duration 4, note = B
+01b6: e4 - inc octave
+01b7: 71 - duration 7, note = C
+01b8: 11 - duration 1, note = C
+01b9: 11 - duration 1, note = C
+01ba: 71 - duration 7, note = C
+01bb: 71 - duration 7, note = C
+01bc: 41 - duration 4, note = C
+01bd: 41 - duration 4, note = C
+01be: e3 - dec octave
+01bf: 7c - duration 7, note = B
+01c0: 1c - duration 1, note = B
+01c1: 1c - duration 1, note = B
+01c2: 7c - duration 7, note = B
+01c3: 7c - duration 7, note = B
+01c4: 4c - duration 4, note = B
+01c5: 4c - duration 4, note = B
+01c6: e4 - inc octave
+01c7: fc 15 11 - save loop back address ($01ca) and jump to $024e (track# + $1115 = $158b and $158b - $133d = $024e)
+01ca: 7b - duration 7, note = A#
+01cb: 1b - duration 1, note = A#
+01cc: 1b - duration 1, note = A#
+01cd: 7b - duration 7, note = A#
+01ce: 7b - duration 7, note = A#
+01cf: 4b - duration 4, note = A#
+01d0: 4b - duration 4, note = A#
+01d1: 7c - duration 7, note = B
+01d2: 1c - duration 1, note = B
+01d3: 1c - duration 1, note = B
+01d4: 7c - duration 7, note = B
+01d5: 7c - duration 7, note = B
+01d6: 4c - duration 4, note = B
+01d7: 4c - duration 4, note = B
+01d8: 79 - duration 7, note = G#
+01d9: 19 - duration 1, note = G#
+01da: 19 - duration 1, note = G#
+01db: 79 - duration 7, note = G#
+01dc: 79 - duration 7, note = G#
+01dd: 49 - duration 4, note = G#
+01de: 49 - duration 4, note = G#
+01df: fb 0a 10 - jump to $0143 (track# + $100a = $1480 and $1480 - $133d = $0143)
+01e2: f0 07 - get duration LUT 7
+01e4: 71 - duration 7, note = C
+01e5: 75 - duration 7, note = E
+01e6: 78 - duration 7, note = G
+01e7: 70 - duration 7, note = rest
+01e8: e3 - dec octave
+01e9: 7a - duration 7, note = A
+01ea: e4 - inc octave
+01eb: 78 - duration 7, note = G
+01ec: e3 - dec octave
+01ed: 7a - duration 7, note = A
+01ee: e4 - inc octave
+01ef: 71 - duration 7, note = C
+01f0: 76 - duration 7, note = F
+01f1: 70 - duration 7, note = rest
+01f2: e3 - dec octave
+01f3: 76 - duration 7, note = F
+01f4: e4 - inc octave
+01f5: 76 - duration 7, note = F
+01f6: e3 - dec octave
+01f7: 7c - duration 7, note = B
+01f8: e4 - inc octave
+01f9: 73 - duration 7, note = D
+01fa: 73 - duration 7, note = D
+01fb: 70 - duration 7, note = rest
+01fc: e3 - dec octave
+01fd: 78 - duration 7, note = G
+01fe: e4 - inc octave
+01ff: 73 - duration 7, note = D
+0200: 71 - duration 7, note = C
+0201: 75 - duration 7, note = E
+0202: 78 - duration 7, note = G
+0203: 70 - duration 7, note = rest
+0204: e3 - dec octave
+0205: 7a - duration 7, note = A
+0206: e4 - inc octave
+0207: 75 - duration 7, note = E
+0208: fe - return
+0209: f0 07 - get duration LUT 7
+020b: 75 - duration 7, note = E
+020c: 75 - duration 7, note = E
+020d: 75 - duration 7, note = E
+020e: 75 - duration 7, note = E
+020f: 75 - duration 7, note = E
+0210: 75 - duration 7, note = E
+0211: 73 - duration 7, note = D
+0212: 73 - duration 7, note = D
+0213: 73 - duration 7, note = D
+0214: 73 - duration 7, note = D
+0215: 73 - duration 7, note = D
+0216: 73 - duration 7, note = D
+0217: 71 - duration 7, note = D
+0218: 71 - duration 7, note = D
+0219: 71 - duration 7, note = D
+021a: 71 - duration 7, note = D
+021b: 71 - duration 7, note = D
+021c: 71 - duration 7, note = D
+021d: 75 - duration 7, note = E
+021e: 75 - duration 7, note = E
+021f: 75 - duration 7, note = E
+0220: 75 - duration 7, note = E
+0221: 75 - duration 7, note = E
+0222: 75 - duration 7, note = E
+0223: fe - return
+0224: f0 07 - get duration LUT 7
+0226: 71 - duration 7, note = D
+0227: 78 - duration 7, note = G
+0228: e4 - inc octave
+0229: 75 - duration 7, note = E
+022a: e3 - dec octave
+022b: e3 - dec octave
+022c: 1a - duration 1, note = A
+022d: e4 - inc octave
+022e: e4 - inc octave
+022f: 71 - duration 7, note = D
+0230: e3 - dec octave
+0231: 75 - duration 7, note = E
+0232: 78 - duration 7, note = G
+0233: e3 - dec octave
+0234: 7a - duration 7, note = A
+0235: e4 - inc octave
+0236: 76 - duration 7, note = F
+0237: e4 - inc octave
+0238: 71 - duration 7, note = D
+0239: e3 - dec octave
+023a: e3 - dec octave
+023b: 1a - duration 1, note = A
+023c: e4 - inc octave
+023d: 7a - duration 7, note = A
+023e: 71 - duration 7, note = D
+023f: 76 - duration 7, note = F
+0240: e3 - dec octave
+0241: 7c - duration 7, note = B
+0242: e4 - inc octave
+0243: 78 - duration 7, note = G
+0244: e4 - inc octave
+0245: 73 - duration 7, note = D
+0246: e3 - dec octave
+0247: 13 - duration 1, note = D
+0248: 7c - duration 7, note = B
+0249: e3 - dec octave
+024a: 7c - duration 7, note = B
+024b: e4 - inc octave
+024c: 78 - duration 7, note = G
+024d: fe - return
+024e: f0 07 - get duration LUT 7
+0250: 75 - duration 7, note = E
+0251: 15 - duration 1, note = E
+0252: 15 - duration 1, note = E
+0253: 75 - duration 7, note = E
+0254: 75 - duration 7, note = E
+0255: 45 - duration 4, note E
+0256: 45 - duration 4, note E
+0257: 73 - duration 7, note = D
+0258: 13 - duration 1, note = D
+0259: 13 - duration 1, note = D
+025a: 73 - duration 7, note = D
+025b: 73 - duration 7, note = D
+025c: 43 - duration 4, note = D
+025d: 43 - duration 4, note = D
+025e: 71 - duration 7, note = D
+025f: 11 - duration 1, note = C
+0260: 11 - duration 1, note = C
+0261: 71 - duration 7, note = D
+0262: 71 - duration 7, note = D
+0263: 41 - duration 4, note = C
+0264: 41 - duration 4, note = C
+0265: e3 - dec octave
+0266: 7c - duration 7, note = B
+0267: 1c - duration 1, note = B
+0268: 1c - duration 1, note = B
+0269: 7c - duration 7, note = B
+026a: 7c - duration 7, note = B
+026b: 4c - duration 4, note = B
+026c: 4c - duration 4, note = B
+026d: 7a - duration 7, note = A
+026e: 1a - duration 1, note = A
+026f: 1a - duration 1, note = A
+0270: 7a - duration 7, note = A
+0271: 7a - duration 7, note = A
+0272: 4a - duration 4, note = A
+0273: 4a - duration 4, note = A
+0274: fe - return
