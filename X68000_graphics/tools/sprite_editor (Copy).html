@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MD → X68000 Sprite Editor</title>
+<style>
+  :root {
+    --bg: #14171c;
+    --panel: #1a1e25;
+    --panel2: #20252e;
+    --border: #2d3440;
+    --text: #c9d1d9;
+    --text-dim: #6e7681;
+    --amber: #e8a33d;
+    --cyan: #4dd0e1;
+    --green: #3fb950;
+    --red: #e5534b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
+    font-size: 13px;
+  }
+  header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  header h1 {
+    font-size: 15px;
+    margin: 0;
+    letter-spacing: 0.06em;
+    color: var(--amber);
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  header .sub {
+    color: var(--text-dim);
+    font-size: 11px;
+  }
+  .file-controls {
+    margin-left: auto;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  label.filebtn {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    padding: 6px 10px;
+    cursor: pointer;
+    color: var(--text);
+    font-size: 11px;
+    white-space: nowrap;
+  }
+  label.filebtn:hover { border-color: var(--cyan); color: var(--cyan); }
+  input[type=file] { display: none; }
+  select, button {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 11px;
+    padding: 6px 10px;
+    cursor: pointer;
+  }
+  button:hover { border-color: var(--cyan); color: var(--cyan); }
+  button.primary { border-color: var(--amber); color: var(--amber); }
+  button.primary:hover { background: var(--amber); color: var(--bg); }
+  button:disabled { opacity: 0.35; cursor: default; }
+  button:disabled:hover { border-color: var(--border); color: var(--text); }
+
+  main {
+    display: grid;
+    grid-template-columns: 1fr 320px 300px;
+    gap: 1px;
+    background: var(--border);
+    height: calc(100vh - 53px);
+  }
+  section {
+    background: var(--bg);
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  section > h2 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    margin: 0 0 4px 0;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .tile-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, 40px);
+    gap: 6px;
+  }
+  .tile-thumb {
+    width: 40px; height: 40px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    position: relative;
+    image-rendering: pixelated;
+    background: #000;
+  }
+  .tile-thumb:hover { border-color: var(--cyan); }
+  .tile-thumb canvas { width: 100%; height: 100%; image-rendering: pixelated; }
+  .tile-thumb .idx {
+    position: absolute; bottom: 0; right: 0;
+    font-size: 8px; background: rgba(0,0,0,0.7); color: var(--text-dim);
+    padding: 0 2px; line-height: 1.4;
+  }
+  .tile-thumb.used { opacity: 0.3; }
+
+  .dims-row { display: flex; gap: 8px; align-items: center; }
+  .stepper { display: flex; align-items: center; gap: 4px; }
+  .stepper button { padding: 2px 8px; }
+  .stepper .val { min-width: 20px; text-align: center; }
+
+  .builder-canvas-wrap {
+    background: radial-gradient(ellipse at center, #1a1e25 0%, #101317 100%);
+    border: 1px solid var(--border);
+    padding: 12px;
+    display: flex;
+    justify-content: center;
+    position: relative;
+  }
+  .builder-canvas-wrap::after {
+    content: "";
+    position: absolute; inset: 12px;
+    background: repeating-linear-gradient(
+      0deg, rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 1px,
+      transparent 1px, transparent 3px);
+    pointer-events: none;
+  }
+  #builderCanvas { image-rendering: pixelated; cursor: pointer; position: relative; }
+
+  .cell-label {
+    font-size: 10px; color: var(--text-dim); line-height: 1.6;
+  }
+  .cell-label b { color: var(--cyan); }
+
+  .sprite-sheet-item {
+    border: 1px solid var(--border);
+    padding: 8px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .sprite-sheet-item canvas { image-rendering: pixelated; border: 1px solid var(--border); }
+  .sprite-sheet-item .meta { font-size: 10px; color: var(--text-dim); flex: 1; }
+  .sprite-sheet-item .meta b { color: var(--text); }
+  .sprite-sheet-item button.remove { color: var(--red); border-color: var(--border); padding: 2px 6px; font-size: 10px; }
+  .sprite-sheet-item button.remove:hover { border-color: var(--red); }
+  .attr-input {
+    background: var(--panel2); border: 1px solid var(--border); color: var(--text);
+    font-family: inherit; font-size: 10px; padding: 1px 3px;
+  }
+  .subentry-controls {
+    font-size: 10px; color: var(--text-dim); display: flex; gap: 6px;
+    align-items: center; padding: 2px 0; border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .subentry-controls label { display: inline-flex; align-items: center; gap: 2px; cursor: pointer; }
+
+  .hexdump {
+    font-size: 10px; color: var(--text-dim); white-space: pre;
+    background: var(--panel); border: 1px solid var(--border);
+    padding: 8px; overflow-x: auto; line-height: 1.5;
+  }
+  .hexdump b { color: var(--amber); }
+
+  .empty-state {
+    color: var(--text-dim);
+    font-size: 11px;
+    padding: 20px 0;
+    text-align: center;
+  }
+  .status { font-size: 10px; color: var(--text-dim); }
+  .status.ok { color: var(--green); }
+  .status.err { color: var(--red); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>MD → X68000 Sprite Editor</h1>
+  <span class="sub">visualise tiles · arrange into PCG order (TL,BL,TR,BR per 16×16 quadrant) · export</span>
+  <div class="file-controls">
+    <label class="filebtn">load tile data (.bin)<input type="file" id="tileFile"></label>
+    <label class="filebtn">load compressed tileset (.bin)<input type="file" id="compressedTileFile"></label>
+    <label class="filebtn">load MD sprite table (.bin)<input type="file" id="mdSatFile"></label>
+    <label class="filebtn">load X68000 sprite table (.bin)<input type="file" id="x68kSatFile"></label>
+    <label class="filebtn">load palette (.bin, optional)<input type="file" id="palFile"></label>
+    <select id="palFormat">
+      <option value="grayscale">grayscale (no palette loaded)</option>
+      <option value="md">MD CRAM format</option>
+      <option value="x68k">X68000 format</option>
+    </select>
+  </div>
+</header>
+
+<main>
+  <section id="sourcePanel">
+    <h2>Source Tiles <span id="tileCount"></span></h2>
+    <div class="dims-row">
+      <span>sprite size:</span>
+      <div class="stepper">
+        <button onclick="adjustDim('w',-2)">−</button>
+        <span class="val" id="wVal">2</span>
+        <button onclick="adjustDim('w',2)">+</button>
+        <span>tiles wide</span>
+      </div>
+      <div class="stepper">
+        <button onclick="adjustDim('h',-2)">−</button>
+        <span class="val" id="hVal">2</span>
+        <button onclick="adjustDim('h',2)">+</button>
+        <span>tiles tall</span>
+      </div>
+    </div>
+    <div class="tile-grid" id="tileGrid">
+      <div class="empty-state">Load a tile data file to begin.<br>Each tile = 8×8px, 4bpp, 32 bytes.</div>
+    </div>
+  </section>
+
+  <section id="builderPanel">
+    <h2>Sprite Builder</h2>
+    <p class="cell-label">Click source tiles in reading order to fill the grid below (left→right, top→bottom). The tool converts to X68000 PCG order automatically on commit — place tiles however looks right, the source byte order doesn't matter.</p>
+    <div class="builder-canvas-wrap">
+      <canvas id="builderCanvas"></canvas>
+    </div>
+    <div class="cell-label" id="builderStatus">0 / 4 cells filled</div>
+    <div class="dims-row">
+      <button onclick="clearBuilder()">clear</button>
+      <button class="primary" id="commitBtn" onclick="commitSprite()" disabled>commit sprite →</button>
+    </div>
+    <div class="hexdump" id="quadrantPreview"></div>
+  </section>
+
+  <section id="sheetPanel">
+    <h2>Sprite Sheet <span id="sheetCount"></span></h2>
+    <div id="sheetList">
+      <div class="empty-state">Committed sprites appear here.</div>
+    </div>
+    <div class="dims-row">
+      <button class="primary" id="exportBtn" onclick="exportBinary()" disabled>export .bin ↓</button>
+      <button id="exportReportBtn" onclick="exportReport()" disabled>export report ↓</button>
+      <button id="exportX68kTableBtn" onclick="exportX68kTable()" disabled>export sprite+meta table ↓</button>
+    </div>
+    <div class="dims-row">
+      <button id="exportCompressedBtn" onclick="exportCompressed()" disabled>export compressed (MD format) ↓</button>
+    </div>
+    <div class="status" id="exportStatus"></div>
+  </section>
+</main>
+
+<script>
+// ===== inlined from md_tile_codec.js, verified against real game data (block39.bin) =====
+// md_tile_codec.js -- JS port of md_tile_codec.py's decompress/compress.
+// Ported directly from the Python reference (itself independently
+// verified against real game data, block39.bin -- see that file's
+// docstring for the full derivation and the dbf off-by-one bug it caught).
+// This port preserves every detail: the corrected run-length ranges, the
+// verified plane-to-nibble-bit mapping, and the 256-byte batch chunking
+// that both compress and decompress must agree on.
+
+const TILE_W = 8, TILE_H = 8;
+const PLANE_BYTES_PER_TILE = TILE_H;
+const PACKED_BYTES_PER_TILE = (TILE_W * TILE_H) / 2;
+
+function decodePlane(data, pos, length, dictionary) {
+  const out = [];
+  while (out.length < length) {
+    const b = data[pos]; pos += 1;
+    const top = b & 0xF0;
+
+    if (top === 0x30 || top === 0x20) {
+      const fill = (top === 0x30) ? 0xFF : 0x00;
+      const run = ((b >> 2) & 3) + 2;
+      for (let k = 0; k < run; k++) out.push(fill);
+      const tail = b & 3;
+      for (let k = 0; k < tail; k++) out.push(data[pos + k]);
+      pos += tail;
+
+    } else if ((top & 0xE0) === 0x60 || (top & 0xE0) === 0x40) {
+      const fill = ((top & 0xE0) === 0x60) ? 0xFF : 0x00;
+      const run = (b & 0x1F) + 6;
+      for (let k = 0; k < run; k++) out.push(fill);
+
+    } else if ((top & 0xC0) === 0xC0) {
+      const run = (b & 0x3F) + 1;
+      for (let k = 0; k < run; k++) out.push(data[pos + k]);
+      pos += run;
+
+    } else if ((top & 0xC0) === 0x80) {
+      const run = ((b >> 2) & 0xF) + 2;
+      const value = data[pos]; pos += 1;
+      for (let k = 0; k < run; k++) out.push(value);
+      const tail = b & 3;
+      for (let k = 0; k < tail; k++) out.push(data[pos + k]);
+      pos += tail;
+
+    } else { // 0x00-0x1F
+      const dictIdx = (b >> 2) & 7;
+      out.push(dictionary[dictIdx], dictionary[dictIdx]);
+      const tail = b & 3;
+      for (let k = 0; k < tail; k++) out.push(data[pos + k]);
+      pos += tail;
+    }
+  }
+  return { decoded: out.slice(0, length), pos };
+}
+
+function planarToPacked(planes) {
+  const [p0, p1, p2, p3] = planes;
+  const n = p0.length;
+  const nibbles = new Uint8Array(n * 8);
+  let ni = 0;
+  for (let i = 0; i < n; i++) {
+    const b0 = p0[i], b1 = p1[i], b2 = p2[i], b3 = p3[i];
+    for (let bit = 7; bit >= 0; bit--) {
+      nibbles[ni++] = (((b3 >> bit) & 1) << 3) | (((b2 >> bit) & 1) << 2) |
+                       (((b0 >> bit) & 1) << 1) | ((b1 >> bit) & 1);
+    }
+  }
+  const packed = new Uint8Array(nibbles.length / 2);
+  for (let i = 0; i < packed.length; i++) {
+    packed[i] = (nibbles[i*2] << 4) | nibbles[i*2+1];
+  }
+  return packed;
+}
+
+function decompressTileset(data, offset = 0) {
+  if (offset + 0x10 > data.length) {
+    throw new Error(`file is only ${data.length} bytes -- too short for a 16-byte header at offset ${offset}`);
+  }
+  const tileCount = (data[offset] << 8) | data[offset+1];
+  if (tileCount === 0 || tileCount > 8192) {
+    throw new Error(`header claims tile_count=${tileCount}, which is implausible -- offset is probably wrong, or this isn't compressed tileset data`);
+  }
+  const dictionary = data.slice(offset+2, offset+10);
+  const planeOff = [
+    0x10,
+    (data[offset+0x0A] << 8) | data[offset+0x0B],
+    (data[offset+0x0C] << 8) | data[offset+0x0D],
+    (data[offset+0x0E] << 8) | data[offset+0x0F],
+  ];
+  const planePos = planeOff.map(o => offset + o);
+  for (let p = 0; p < 4; p++) {
+    if (planePos[p] >= data.length) {
+      throw new Error(`plane ${p}'s stream would start at byte ${planePos[p]}, past end of file (${data.length} bytes)`);
+    }
+  }
+
+  const totalPerPlane = tileCount * PLANE_BYTES_PER_TILE;
+  const BATCH = 256;
+  const planeData = [[], [], [], []];
+  let remaining = totalPerPlane;
+
+  while (remaining > 0) {
+    const batch = Math.min(BATCH, remaining);
+    for (let p = 0; p < 4; p++) {
+      if (planePos[p] >= data.length) {
+        throw new Error(`ran off the end of the file while decoding plane ${p} (needed ${batch} more bytes, ${totalPerPlane - remaining} already decoded)`);
+      }
+      const { decoded, pos } = decodePlane(data, planePos[p], batch, dictionary);
+      planeData[p].push(...decoded);
+      planePos[p] = pos;
+    }
+    remaining -= batch;
+  }
+
+  const packed = planarToPacked(planeData.map(p => Uint8Array.from(p)));
+  return { packed, tileCount };
+}
+
+// ---------------------------------------------------------------------
+// Compression
+// ---------------------------------------------------------------------
+
+function packedToPlanar(packed, tileCount) {
+  const nBytes = tileCount * PLANE_BYTES_PER_TILE;
+  const nPixels = nBytes * 8;
+  const nibbles = new Uint8Array(nPixels);
+  for (let i = 0; i < packed.length; i++) {
+    nibbles[i*2] = packed[i] >> 4;
+    nibbles[i*2+1] = packed[i] & 0xF;
+  }
+  const planes = [new Uint8Array(nBytes), new Uint8Array(nBytes), new Uint8Array(nBytes), new Uint8Array(nBytes)];
+  for (let i = 0; i < nBytes; i++) {
+    const acc = [0,0,0,0];
+    for (let bitpos = 0; bitpos < 8; bitpos++) {
+      const nib = nibbles[i*8+bitpos];
+      const b3 = (nib >> 3) & 1, b2 = (nib >> 2) & 1, b0 = (nib >> 1) & 1, b1 = nib & 1;
+      acc[3] = ((acc[3] << 1) | b3) & 0xFF;
+      acc[2] = ((acc[2] << 1) | b2) & 0xFF;
+      acc[0] = ((acc[0] << 1) | b0) & 0xFF;
+      acc[1] = ((acc[1] << 1) | b1) & 0xFF;
+    }
+    planes[0][i] = acc[0]; planes[1][i] = acc[1]; planes[2][i] = acc[2]; planes[3][i] = acc[3];
+  }
+  return planes;
+}
+
+function buildDictionary(planeBytes) {
+  const counts = new Map();
+  for (const b of planeBytes) {
+    if (b === 0x00 || b === 0xFF) continue;
+    counts.set(b, (counts.get(b) || 0) + 1);
+  }
+  const sorted = [...counts.entries()].sort((a,b) => b[1]-a[1]).map(e => e[0]);
+  while (sorted.length < 8) sorted.push(0);
+  return sorted.slice(0, 8);
+}
+
+function encodePlane(plane, dictionary) {
+  const out = [];
+  const n = plane.length;
+  const dictIndex = new Map(dictionary.map((v,i) => [v,i]));
+  let i = 0;
+
+  const notRunnable = (v) => v !== 0x00 && v !== 0xFF;
+
+  while (i < n) {
+    const b = plane[i];
+    let run = 1;
+    while (i+run < n && plane[i+run] === b && run < 64) run++;
+
+    if (b === 0x00 || b === 0xFF) {
+      const top = (b === 0xFF) ? 0x60 : 0x40;
+      const topShort = (b === 0xFF) ? 0x30 : 0x20;
+      if (run >= 6) {
+        const take = Math.min(run, 37);
+        out.push(top | (take - 6));
+        i += take;
+        continue;
+      } else if (run >= 2) {
+        const take = Math.min(run, 5);
+        let tailStart = i + take, tail = 0;
+        while (tail < 3 && tailStart+tail < n && notRunnable(plane[tailStart+tail])) tail++;
+        out.push(topShort | ((take-2) << 2) | tail);
+        for (let k=0;k<tail;k++) out.push(plane[tailStart+k]);
+        i += take + tail;
+        continue;
+      }
+      // run === 1: fall through
+    }
+
+    if (dictIndex.has(b) && run >= 2) {
+      let tailStart = i + 2, tail = 0;
+      while (tail < 3 && tailStart+tail < n && notRunnable(plane[tailStart+tail])) tail++;
+      out.push((dictIndex.get(b) << 2) | tail);
+      for (let k=0;k<tail;k++) out.push(plane[tailStart+k]);
+      i += 2 + tail;
+      continue;
+    }
+
+    if (run >= 2) {
+      const take = Math.min(run, 17);
+      let tailStart = i + take, tail = 0;
+      while (tail < 3 && tailStart+tail < n && notRunnable(plane[tailStart+tail])) tail++;
+      out.push(0x80 | ((take-2) << 2) | tail);
+      out.push(b);
+      for (let k=0;k<tail;k++) out.push(plane[tailStart+k]);
+      i += take + tail;
+      continue;
+    }
+
+    let litLen = 1;
+    while (litLen < 64 && i+litLen < n) {
+      const nxt = plane[i+litLen];
+      let nxtRun = 1;
+      while (i+litLen+nxtRun < n && plane[i+litLen+nxtRun] === nxt && nxtRun < 64) nxtRun++;
+      if (nxtRun >= 2 || !notRunnable(nxt)) break;
+      litLen++;
+    }
+    out.push(0xC0 | (litLen - 1));
+    for (let k=0;k<litLen;k++) out.push(plane[i+k]);
+    i += litLen;
+  }
+  return out;
+}
+
+function compressTileset(packed, tileCount) {
+  const planes = packedToPlanar(packed, tileCount);
+  const allBytes = [...planes[0], ...planes[1], ...planes[2], ...planes[3]];
+  const dictionary = buildDictionary(allBytes);
+
+  const BATCH = 256;
+  const streams = planes.map(plane => {
+    const chunks = [];
+    for (let off = 0; off < plane.length; off += BATCH) {
+      chunks.push(...encodePlane(plane.slice(off, off+BATCH), dictionary));
+    }
+    return chunks;
+  });
+
+  const header = new Array(0x10).fill(0);
+  header[0] = (tileCount >> 8) & 0xFF;
+  header[1] = tileCount & 0xFF;
+  for (let k=0;k<8;k++) header[2+k] = dictionary[k];
+  const off1 = 0x10 + streams[0].length;
+  const off2 = off1 + streams[1].length;
+  const off3 = off2 + streams[2].length;
+  header[0x0A] = (off1>>8)&0xFF; header[0x0B] = off1&0xFF;
+  header[0x0C] = (off2>>8)&0xFF; header[0x0D] = off2&0xFF;
+  header[0x0E] = (off3>>8)&0xFF; header[0x0F] = off3&0xFF;
+
+  return Uint8Array.from([...header, ...streams[0], ...streams[1], ...streams[2], ...streams[3]]);
+}
+// ===== end inlined codec =====
+
+// ===== inlined from md_sat_codec.js, verified byte-identical to Python reference =====
+// md_sat_codec.js -- JS port of md_sat_to_x68k.py's SAT parsing and
+// conversion logic. Ported for exact behavioral match, not rewritten --
+// see that file's docstring for the full field-layout sourcing and the
+// hand-verified flip-mirroring geometry derivation.
+
+const SAT_TILE_BYTES = 32;
+const SAT_BLANK_TILE = new Uint8Array(SAT_TILE_BYTES);
+
+function parseSatEntry(data, offset) {
+  const w0 = (data[offset] << 8) | data[offset+1];
+  const w1 = (data[offset+2] << 8) | data[offset+3];
+  const w2 = (data[offset+4] << 8) | data[offset+5];
+  const w3 = (data[offset+6] << 8) | data[offset+7];
+  return {
+    yRaw: w0 & 0x3FF,
+    hsize: (w1 >> 8) & 3,
+    vsize: (w1 >> 6) & 3,
+    link: w1 & 0x3F,
+    priority: (w2 >> 15) & 1,
+    palette: (w2 >> 13) & 3,
+    vflip: (w2 >> 12) & 1,
+    hflip: (w2 >> 11) & 1,
+    tileIndex: w2 & 0x7FF,
+    xRaw: w3 & 0x3FF,
+  };
+}
+
+function extractSpriteTiles(tiles, baseIndex, tileW, tileH) {
+  const grid = [];
+  for (let col = 0; col < tileW; col++) {
+    const column = [];
+    for (let row = 0; row < tileH; row++) {
+      const idx = baseIndex + col * tileH + row;
+      column.push((idx >= 0 && idx < tiles.length) ? tiles[idx] : SAT_BLANK_TILE);
+    }
+    grid.push(column);
+  }
+  return grid;
+}
+
+function tileAtGrid(grid, col, row, tileW, tileH) {
+  if (col < tileW && row < tileH) return grid[col][row];
+  return SAT_BLANK_TILE;
+}
+
+function concatBytes(arrays) {
+  const total = arrays.reduce((n, a) => n + a.length, 0);
+  const out = new Uint8Array(total);
+  let off = 0;
+  for (const a of arrays) {
+    out.set(a, off);
+    off += a.length;
+  }
+  return out;
+}
+
+function concatTiles(...tiles) {
+  return concatBytes(tiles);
+}
+
+function convertSprite(entry, tiles, patternStartIndex) {
+  const tileW = entry.hsize + 1;
+  const tileH = entry.vsize + 1;
+  const grid = extractSpriteTiles(tiles, entry.tileIndex, tileW, tileH);
+
+  const quadW = Math.ceil(tileW / 2);
+  const quadH = Math.ceil(tileH / 2);
+
+  const patterns = [];
+  const subEntries = [];
+  let patternNum = patternStartIndex;
+
+  for (let qy = 0; qy < quadH; qy++) {
+    for (let qx = 0; qx < quadW; qx++) {
+      const tl = tileAtGrid(grid, qx*2,   qy*2,   tileW, tileH);
+      const tr = tileAtGrid(grid, qx*2+1, qy*2,   tileW, tileH);
+      const bl = tileAtGrid(grid, qx*2,   qy*2+1, tileW, tileH);
+      const br = tileAtGrid(grid, qx*2+1, qy*2+1, tileW, tileH);
+      patterns.push(concatTiles(tl, bl, tr, br)); // PCG order, always unflipped
+
+      const screenQx = entry.hflip ? (quadW - 1 - qx) : qx;
+      const screenQy = entry.vflip ? (quadH - 1 - qy) : qy;
+
+      subEntries.push({
+        relX: screenQx * 16,
+        relY: screenQy * 16,
+        pattern: patternNum,
+        palette: entry.palette,
+        hflip: entry.hflip,
+        vflip: entry.vflip,
+        priority: entry.priority,
+      });
+      patternNum++;
+    }
+  }
+  return { patterns, subEntries };
+}
+
+function convertSat(satData, tileData, spriteCount, tileIndexBase = 0) {
+  const tiles = [];
+  for (let i = 0; i < Math.floor(tileData.length / SAT_TILE_BYTES); i++) {
+    tiles.push(tileData.slice(i*SAT_TILE_BYTES, (i+1)*SAT_TILE_BYTES));
+  }
+
+  const allPatterns = [];
+  const sprites = [];
+  let patternCursor = 0;
+  let subSpriteCursor = 0;
+
+  for (let i = 0; i < spriteCount; i++) {
+    const entry = parseSatEntry(satData, i * 8);
+    entry.tileIndex -= tileIndexBase;
+    const { patterns, subEntries } = convertSprite(entry, tiles, patternCursor);
+    allPatterns.push(...patterns);
+    patternCursor += patterns.length;
+
+    const quadW = Math.ceil((entry.hsize + 1) / 2);
+    const quadH = Math.ceil((entry.vsize + 1) / 2);
+    sprites.push({
+      mdIndex: i, entry, subEntries,
+      subSpriteStart: subSpriteCursor,
+      subSpriteCount: subEntries.length,
+      widthSprites: quadW, heightSprites: quadH,
+    });
+    subSpriteCursor += subEntries.length;
+  }
+
+  const pcgData = concatTiles(...allPatterns);
+  return { pcgData, sprites };
+}
+
+// X68000 sprite attribute word field positions (same constants as
+// md_sat_to_x68k.py, sourced from gfx_blit_ex.s / x68k_hw.i)
+const SP_PAL_SHIFT = 8;
+const SP_HFLIP = 0x4000;
+const SP_VFLIP = 0x8000;
+const SP_PRI_FRONT = 0x0003;
+const SP_PRI_BACK = 0x0001;
+
+function buildSubSpriteTable(sprites) {
+  const entries = [];
+  sprites.forEach(s => s.subEntries.forEach(sub => entries.push(sub)));
+  const out = new Uint8Array(entries.length * 8);
+  entries.forEach((sub, i) => {
+    let attr = sub.pattern & 0xFF;
+    attr |= (sub.palette & 0xF) << SP_PAL_SHIFT;
+    if (sub.hflip) attr |= SP_HFLIP;
+    if (sub.vflip) attr |= SP_VFLIP;
+    const priority = sub.priority ? SP_PRI_FRONT : SP_PRI_BACK;
+    const off = i * 8;
+    out[off]   = (sub.relX >> 8) & 0xFF; out[off+1] = sub.relX & 0xFF;
+    out[off+2] = (sub.relY >> 8) & 0xFF; out[off+3] = sub.relY & 0xFF;
+    out[off+4] = (attr >> 8) & 0xFF;     out[off+5] = attr & 0xFF;
+    out[off+6] = (priority >> 8) & 0xFF; out[off+7] = priority & 0xFF;
+  });
+  return out;
+}
+
+function buildMetaSpriteTable(sprites) {
+  const out = new Uint8Array(sprites.length * 6);
+  sprites.forEach((s, i) => {
+    const off = i * 6;
+    out[off]   = (s.subSpriteStart >> 8) & 0xFF; out[off+1] = s.subSpriteStart & 0xFF;
+    out[off+2] = s.subSpriteCount & 0xFF;
+    out[off+3] = s.widthSprites & 0xFF;
+    out[off+4] = s.heightSprites & 0xFF;
+    out[off+5] = s.entry.palette & 0xFF;
+  });
+  return out;
+}
+// ===== end inlined SAT codec =====
+
+
+const TILE_BYTES = 32;
+const TILE_PX = 8;
+
+let sourceTiles = [];   // array of Uint8Array(32), raw MD tile data
+let palette = Array.from({length:16}, (_,i)=>[i*17,i*17,i*17]); // default grayscale
+let dims = { w: 2, h: 2 };
+let builderCells = [];  // array of tile indices (or null), length w*h, raster order
+let builderTileIndices = new Set();    // tiles currently placed in the builder -- cleared on Clear
+let committedTileIndices = new Set();  // tiles used in any committed sprite -- permanent until that sprite is removed
+let sheet = [];  // array of "meta sprites": {w,h,cells, subEntries: [{relX,relY,
+                 // palette,hflip,vflip,priority,pcgBytes}]}. Manually-built
+                 // sprites (via the click-to-place builder) get exactly one
+                 // sub-entry with default metadata (relX=0,relY=0,palette=0,
+                 // hflip=0,vflip=0) wrapping the whole assembled blob, to
+                 // stay structurally consistent with SAT-imported sprites,
+                 // which can have multiple sub-entries (one per 16x16 PCG
+                 // pattern) with real per-quadrant metadata.
+
+// ---------- palette / colour decode ----------
+
+function mdWordToRGB(word) {
+  const scale = v => Math.round(v * 255 / 7);
+  const r = (word >> 1) & 7, g = (word >> 5) & 7, b = (word >> 9) & 7;
+  return [scale(r), scale(g), scale(b)];
+}
+function x68kWordToRGB(word) {
+  const scale = v => Math.round(v * 255 / 31);
+  const g = (word >> 11) & 0x1F, r = (word >> 6) & 0x1F, b = (word >> 1) & 0x1F;
+  return [scale(r), scale(g), scale(b)];
+}
+
+document.getElementById('palFile').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const buf = new Uint8Array(await file.arrayBuffer());
+  const fmt = document.getElementById('palFormat').value === 'grayscale' ? 'md' : document.getElementById('palFormat').value;
+  const n = Math.min(16, Math.floor(buf.length / 2));
+  const newPal = [];
+  for (let i = 0; i < n; i++) {
+    const word = (buf[i*2] << 8) | buf[i*2+1];
+    newPal.push(fmt === 'x68k' ? x68kWordToRGB(word) : mdWordToRGB(word));
+  }
+  while (newPal.length < 16) newPal.push([255,0,255]); // magenta = missing entry, obvious if visible
+  palette = newPal;
+  if (document.getElementById('palFormat').value === 'grayscale') {
+    document.getElementById('palFormat').value = 'md';
+  }
+  renderSourceGrid();
+  renderBuilder();
+  sheet.forEach(renderSheetItemCanvas);
+});
+
+document.getElementById('palFormat').addEventListener('change', () => {
+  if (document.getElementById('palFormat').value === 'grayscale') {
+    palette = Array.from({length:16}, (_,i)=>[i*17,i*17,i*17]);
+    renderSourceGrid(); renderBuilder(); sheet.forEach(renderSheetItemCanvas);
+  }
+});
+
+// ---------- tile file loading ----------
+
+document.getElementById('mdSatFile').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (sourceTiles.length === 0) {
+    setStatus('exportStatus', 'load MD tile data first -- the SAT references tiles by index', 'err');
+    e.target.value = '';
+    return;
+  }
+  const buf = new Uint8Array(await file.arrayBuffer());
+  const spriteCount = parseInt(prompt('Number of sprite entries in this SAT file?', Math.floor(buf.length / 8)));
+  if (!spriteCount || spriteCount <= 0) { e.target.value = ''; return; }
+  const tileIndexBase = parseInt(prompt('Tile index base to subtract (0 if SAT indices are already 0-based into your loaded tile file)?', '0')) || 0;
+
+  try {
+    let imported = 0;
+    for (let i = 0; i < spriteCount; i++) {
+      const entry = parseSatEntry(buf, i * 8);
+      entry.tileIndex -= tileIndexBase;
+      const { subEntries } = convertSprite(entry, sourceTiles, 0);
+      sheet.push({ w: null, h: null, cells: null, metaId: i, subEntries });
+      imported++;
+    }
+    renderSheet();
+    document.getElementById('exportBtn').disabled = false;
+    document.getElementById('exportReportBtn').disabled = false;
+    document.getElementById('exportX68kTableBtn').disabled = false;
+    setStatus('exportStatus', `imported ${imported} MD sprites from ${file.name}`, 'ok');
+  } catch (err) {
+    setStatus('exportStatus', `SAT import failed: ${err.message}`, 'err');
+  }
+  e.target.value = '';
+});
+
+document.getElementById('x68kSatFile').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (sourceTiles.length === 0) {
+    setStatus('exportStatus', 'load tile data first -- treated as PCG patterns (4 tiles/pattern) for this loader', 'err');
+    e.target.value = '';
+    return;
+  }
+  const buf = new Uint8Array(await file.arrayBuffer());
+  const entryCount = Math.floor(buf.length / 8);
+
+  try {
+    for (let i = 0; i < entryCount; i++) {
+      const off = i * 8;
+      const relX = ((buf[off] << 8) | buf[off+1]) << 16 >> 16;   // signed
+      const relY = ((buf[off+2] << 8) | buf[off+3]) << 16 >> 16;
+      const attr = (buf[off+4] << 8) | buf[off+5];
+      const priorityWord = (buf[off+6] << 8) | buf[off+7];
+      const pattern = attr & 0xFF;
+      const palette = (attr >> EXPORT_SP_PAL_SHIFT) & 0xF;
+      const hflip = (attr & EXPORT_SP_HFLIP) ? 1 : 0;
+      const vflip = (attr & EXPORT_SP_VFLIP) ? 1 : 0;
+      const priority = priorityWord === EXPORT_SP_PRI_FRONT ? 1 : 0;
+
+      const patternStart = pattern * 4; // 4 source tiles per PCG pattern
+      if (patternStart + 3 >= sourceTiles.length) {
+        setStatus('exportStatus', `pattern ${pattern} needs tiles beyond loaded data -- stopped at entry ${i}`, 'err');
+        break;
+      }
+      const pcgBytes = new Uint8Array(4 * TILE_BYTES);
+      for (let k = 0; k < 4; k++) pcgBytes.set(sourceTiles[patternStart + k], k * TILE_BYTES);
+
+      sheet.push({
+        w: null, h: null, cells: null, metaId: i,
+        subEntries: [{ relX, relY, pcgBytes, palette, hflip, vflip, priority }],
+      });
+    }
+    renderSheet();
+    document.getElementById('exportBtn').disabled = false;
+    document.getElementById('exportReportBtn').disabled = false;
+    document.getElementById('exportX68kTableBtn').disabled = false;
+    setStatus('exportStatus', `imported ${entryCount} X68000 sprite entries from ${file.name}`, 'ok');
+  } catch (err) {
+    setStatus('exportStatus', `X68000 table import failed: ${err.message}`, 'err');
+  }
+  e.target.value = '';
+});
+
+document.getElementById('compressedTileFile').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const buf = new Uint8Array(await file.arrayBuffer());
+  try {
+    const { packed, tileCount } = decompressTileset(buf, 0);
+    sourceTiles = [];
+    for (let i = 0; i < tileCount; i++) {
+      sourceTiles.push(packed.slice(i*TILE_BYTES, (i+1)*TILE_BYTES));
+    }
+    document.getElementById('tileCount').textContent = `(${tileCount} tiles, decompressed)`;
+    document.getElementById('exportCompressedBtn').disabled = false;
+    renderSourceGrid();
+    setStatus('exportStatus', `decompressed ${tileCount} tiles from ${file.name}`, 'ok');
+  } catch (err) {
+    setStatus('exportStatus', `decompress failed: ${err.message}`, 'err');
+  }
+});
+
+document.getElementById('tileFile').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const buf = new Uint8Array(await file.arrayBuffer());
+  if (buf.length % TILE_BYTES !== 0) {
+    setStatus('exportStatus', `warning: file is ${buf.length} bytes, not a multiple of ${TILE_BYTES} -- trailing bytes ignored`, 'err');
+  }
+  const n = Math.floor(buf.length / TILE_BYTES);
+  sourceTiles = [];
+  for (let i = 0; i < n; i++) {
+    sourceTiles.push(buf.slice(i*TILE_BYTES, (i+1)*TILE_BYTES));
+  }
+  document.getElementById('tileCount').textContent = `(${n} tiles)`;
+  document.getElementById('exportCompressedBtn').disabled = false;
+  renderSourceGrid();
+});
+
+function drawTile(canvas, tileData, scale) {
+  canvas.width = TILE_PX * scale;
+  canvas.height = TILE_PX * scale;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  const img = ctx.createImageData(TILE_PX, TILE_PX);
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col += 2) {
+      const byte = tileData[row*4 + col/2];
+      const hi = byte >> 4, lo = byte & 0xF;
+      for (const [c, nib] of [[col, hi],[col+1, lo]]) {
+        const [r,g,b] = palette[nib % 16];
+        const p = (row*8+c)*4;
+        img.data[p]=r; img.data[p+1]=g; img.data[p+2]=b; img.data[p+3]=255;
+      }
+    }
+  }
+  // draw at 1:1 into a temp then scale up with nearest-neighbour via CSS (image-rendering: pixelated)
+  const tmp = document.createElement('canvas');
+  tmp.width = 8; tmp.height = 8;
+  tmp.getContext('2d').putImageData(img, 0, 0);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.drawImage(tmp, 0, 0, canvas.width, canvas.height);
+}
+
+function renderSourceGrid() {
+  const grid = document.getElementById('tileGrid');
+  if (sourceTiles.length === 0) return;
+  grid.innerHTML = '';
+  sourceTiles.forEach((tileData, i) => {
+    const thumb = document.createElement('div');
+    thumb.className = 'tile-thumb' + ((builderTileIndices.has(i) || committedTileIndices.has(i)) ? ' used' : '');
+    const canvas = document.createElement('canvas');
+    drawTile(canvas, tileData, 5);
+    thumb.appendChild(canvas);
+    const idx = document.createElement('div');
+    idx.className = 'idx';
+    idx.textContent = i;
+    thumb.appendChild(idx);
+    thumb.onclick = () => placeTile(i);
+    grid.appendChild(thumb);
+  });
+}
+
+// ---------- sprite builder grid ----------
+
+function adjustDim(which, delta) {
+  const next = dims[which] + delta;
+  if (next < 2 || next > 8) return;
+  dims[which] = next;
+  document.getElementById(which+'Val').textContent = next;
+  clearBuilder();
+}
+
+function clearBuilder() {
+  builderCells = new Array(dims.w * dims.h).fill(null);
+  builderTileIndices.clear();
+  renderBuilder();
+  renderSourceGrid();
+}
+
+function placeTile(tileIdx) {
+  const emptyCell = builderCells.indexOf(null);
+  if (emptyCell === -1) return; // grid full, must commit or clear first
+  builderCells[emptyCell] = tileIdx;
+  builderTileIndices.add(tileIdx);
+  renderSourceGrid();
+  renderBuilder();
+}
+
+function renderBuilder() {
+  const filled = builderCells.filter(c => c !== null).length;
+  document.getElementById('builderStatus').textContent = `${filled} / ${builderCells.length} cells filled`;
+  document.getElementById('commitBtn').disabled = (filled !== builderCells.length || builderCells.length === 0);
+
+  const canvas = document.getElementById('builderCanvas');
+  const scale = dims.w * dims.h > 16 ? 6 : 10;
+  canvas.width = dims.w * TILE_PX * scale;
+  canvas.height = dims.h * TILE_PX * scale;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  for (let cy = 0; cy < dims.h; cy++) {
+    for (let cx = 0; cx < dims.w; cx++) {
+      const cellIdx = cy * dims.w + cx;
+      const tileIdx = builderCells[cellIdx];
+      const tmp = document.createElement('canvas');
+      if (tileIdx !== null) {
+        drawTile(tmp, sourceTiles[tileIdx], 1);
+      } else {
+        tmp.width = 8; tmp.height = 8;
+        const tctx = tmp.getContext('2d');
+        tctx.fillStyle = cellIdx === builderCells.indexOf(null) ? '#2d3440' : '#191c22';
+        tctx.fillRect(0,0,8,8);
+      }
+      ctx.drawImage(tmp, cx*TILE_PX*scale, cy*TILE_PX*scale, TILE_PX*scale, TILE_PX*scale);
+    }
+  }
+  // grid lines between 16x16 quadrant boundaries
+  ctx.strokeStyle = 'rgba(232,163,61,0.5)';
+  ctx.lineWidth = 1;
+  for (let qx = 2; qx < dims.w; qx += 2) {
+    ctx.beginPath(); ctx.moveTo(qx*TILE_PX*scale,0); ctx.lineTo(qx*TILE_PX*scale,canvas.height); ctx.stroke();
+  }
+  for (let qy = 2; qy < dims.h; qy += 2) {
+    ctx.beginPath(); ctx.moveTo(0,qy*TILE_PX*scale); ctx.lineTo(canvas.width,qy*TILE_PX*scale); ctx.stroke();
+  }
+  document.getElementById('quadrantPreview').textContent = builderCells.length
+    ? 'grid (raster order, click to fill):\n' + formatGrid()
+    : '';
+}
+
+function formatGrid() {
+  let out = '';
+  for (let cy = 0; cy < dims.h; cy++) {
+    let row = [];
+    for (let cx = 0; cx < dims.w; cx++) {
+      const v = builderCells[cy*dims.w+cx];
+      row.push(v === null ? '..' : String(v).padStart(2,'0'));
+    }
+    out += row.join(' ') + '\n';
+  }
+  return out;
+}
+
+document.getElementById('builderCanvas').onclick = () => {}; // placement is via source tiles, not the builder canvas
+
+// ---------- PCG reorder: row-major builder grid -> per-2x2-quadrant
+// TL,BL,TR,BR sub-entries, one per 16x16 pattern (matches the structure
+// SAT-imported sprites use, so both paths produce identical shapes) ----------
+
+function tileAt(cx, cy) {
+  const idx = builderCells[cy * dims.w + cx];
+  return idx === null ? new Uint8Array(TILE_BYTES) : sourceTiles[idx];
+}
+
+function buildSubEntriesFromBuilder() {
+  const subEntries = [];
+  for (let qy = 0; qy < dims.h; qy += 2) {
+    for (let qx = 0; qx < dims.w; qx += 2) {
+      const tl = tileAt(qx, qy);
+      const tr = tileAt(qx+1, qy);
+      const bl = tileAt(qx, qy+1);
+      const br = tileAt(qx+1, qy+1);
+      const pcgBytes = new Uint8Array(4 * TILE_BYTES);
+      [tl, bl, tr, br].forEach((t, i) => pcgBytes.set(t, i * TILE_BYTES));
+      subEntries.push({
+        relX: qx * TILE_PX, relY: qy * TILE_PX, pcgBytes,
+        palette: 0, hflip: 0, vflip: 0, priority: 1,
+      });
+    }
+  }
+  return subEntries;
+}
+
+// ---------- sprite sheet (committed sprites) ----------
+
+function commitSprite() {
+  const subEntries = buildSubEntriesFromBuilder();
+  sheet.push({ w: dims.w, h: dims.h, cells: [...builderCells], subEntries });
+  builderTileIndices.forEach(idx => committedTileIndices.add(idx));
+  clearBuilder();
+  renderSheet();
+  document.getElementById('exportBtn').disabled = false;
+  document.getElementById('exportReportBtn').disabled = false;
+  document.getElementById('exportX68kTableBtn').disabled = false;
+}
+
+function drawPCGPattern(canvas, pcgBytes, scale) {
+  canvas.width = 16 * scale;
+  canvas.height = 16 * scale;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  const positions = [[0,0],[0,8],[8,0],[8,8]]; // TL,BL,TR,BR
+  for (let i = 0; i < 4; i++) {
+    const tileData = pcgBytes.slice(i*TILE_BYTES, (i+1)*TILE_BYTES);
+    const tmp = document.createElement('canvas');
+    drawTile(tmp, tileData, scale);
+    const [ox, oy] = positions[i];
+    ctx.drawImage(tmp, ox*scale, oy*scale);
+  }
+}
+
+function recomputeCommittedTileIndices() {
+  committedTileIndices.clear();
+  sheet.forEach(item => {
+    if (item.cells) {
+      item.cells.forEach(idx => { if (idx !== null) committedTileIndices.add(idx); });
+    }
+    // SAT-imported sprites don't have a `cells` array (they're built
+    // directly from parsed tile data, not the click-to-place builder),
+    // so there's nothing to grey out for them here -- intentional, not
+    // an oversight.
+  });
+}
+
+function removeSprite(i) {
+  sheet.splice(i, 1);
+  recomputeCommittedTileIndices();
+  renderSheet();
+  renderSourceGrid();
+  if (sheet.length === 0) {
+    document.getElementById('exportBtn').disabled = true;
+    document.getElementById('exportReportBtn').disabled = true;
+    document.getElementById('exportX68kTableBtn').disabled = true;
+  }
+}
+
+function renderSheetItemCanvas(item, canvas) {
+  const scale = 4;
+  // Bounding box computed from actual sub-entry positions, so this works
+  // uniformly for manually-built sprites (item.w/h in tiles) and
+  // SAT-imported ones (positions already in pixels, no item.w/h needed).
+  const maxX = Math.max(...item.subEntries.map(s => s.relX)) + 16;
+  const maxY = Math.max(...item.subEntries.map(s => s.relY)) + 16;
+  canvas.width = maxX * scale;
+  canvas.height = maxY * scale;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+
+  item.subEntries.forEach(sub => {
+    const tmp = document.createElement('canvas');
+    drawPCGPattern(tmp, sub.pcgBytes, scale);
+    ctx.save();
+    // Reflect hflip/vflip in the preview itself, so what you see here is
+    // what the hardware will actually display -- not just the unflipped
+    // pattern content.
+    const cx = sub.relX * scale, cy = sub.relY * scale;
+    const w = 16 * scale, h = 16 * scale;
+    ctx.translate(cx + (sub.hflip ? w : 0), cy + (sub.vflip ? h : 0));
+    ctx.scale(sub.hflip ? -1 : 1, sub.vflip ? -1 : 1);
+    ctx.drawImage(tmp, 0, 0);
+    ctx.restore();
+  });
+}
+
+function renderSheet() {
+  document.getElementById('sheetCount').textContent = `(${sheet.length})`;
+  const list = document.getElementById('sheetList');
+  if (sheet.length === 0) {
+    list.innerHTML = '<div class="empty-state">Committed sprites appear here.</div>';
+    return;
+  }
+  list.innerHTML = '';
+  let byteOffset = 0;
+  sheet.forEach((item, i) => {
+    if (item.metaId === undefined) item.metaId = i;
+
+    const row = document.createElement('div');
+    row.className = 'sprite-sheet-item';
+    const canvas = document.createElement('canvas');
+    renderSheetItemCanvas(item, canvas);
+    row.appendChild(canvas);
+
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    const totalBytes = item.subEntries.reduce((n,s) => n + s.pcgBytes.length, 0);
+    meta.innerHTML = `<b>sprite ${i}</b> (${item.subEntries.length} pattern` +
+      `${item.subEntries.length>1?'s':''}, $${byteOffset.toString(16)})<br>` +
+      `meta ID: <input type="number" class="attr-input" value="${item.metaId}" ` +
+      `min="0" onchange="setMetaId(${i}, this.value)" style="width:40px">`;
+
+    // Per-sub-entry attribute controls
+    item.subEntries.forEach((sub, j) => {
+      const row2 = document.createElement('div');
+      row2.className = 'subentry-controls';
+      row2.innerHTML = `
+        <span class="cell-label">#${j} (${sub.relX},${sub.relY})</span>
+        pal:<input type="number" class="attr-input" value="${sub.palette}" min="0" max="3"
+             onchange="setSubAttr(${i},${j},'palette',parseInt(this.value))" style="width:30px">
+        <label><input type="checkbox" ${sub.hflip?'checked':''}
+             onchange="setSubAttr(${i},${j},'hflip',this.checked?1:0)"> H</label>
+        <label><input type="checkbox" ${sub.vflip?'checked':''}
+             onchange="setSubAttr(${i},${j},'vflip',this.checked?1:0)"> V</label>
+        <label><input type="checkbox" ${sub.priority?'checked':''}
+             onchange="setSubAttr(${i},${j},'priority',this.checked?1:0)"> front</label>
+      `;
+      meta.appendChild(row2);
+    });
+    row.appendChild(meta);
+
+    const rm = document.createElement('button');
+    rm.className = 'remove'; rm.textContent = '×';
+    rm.onclick = () => removeSprite(i);
+    row.appendChild(rm);
+    list.appendChild(row);
+    byteOffset += totalBytes;
+  });
+}
+
+function setMetaId(sheetIdx, value) {
+  sheet[sheetIdx].metaId = parseInt(value) || 0;
+}
+
+function setSubAttr(sheetIdx, subIdx, attr, value) {
+  sheet[sheetIdx].subEntries[subIdx][attr] = value;
+  renderSheet(); // re-render so the preview reflects flip changes immediately
+}
+
+// ---------- export ----------
+
+function setStatus(id, msg, cls) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.className = 'status' + (cls ? ' '+cls : '');
+}
+
+function allSubEntries() {
+  const out = [];
+  sheet.forEach(item => item.subEntries.forEach(sub => out.push(sub)));
+  return out;
+}
+
+function exportBinary() {
+  const subs = allSubEntries();
+  const total = subs.reduce((n,s) => n + s.pcgBytes.length, 0);
+  const out = new Uint8Array(total);
+  let off = 0;
+  subs.forEach(s => { out.set(s.pcgBytes, off); off += s.pcgBytes.length; });
+  downloadBytes(out, 'x68k_sprites.bin');
+  setStatus('exportStatus', `exported ${sheet.length} sprite(s), ${subs.length} patterns, ${total} bytes`, 'ok');
+}
+
+function exportReport() {
+  let lines = ['; MD -> X68000 sprite sheet report', '; generated by sprite editor', ''];
+  let patternIdx = 0, off = 0;
+  sheet.forEach((item, i) => {
+    lines.push(`; sprite ${i} (meta ID ${item.metaId}): ${item.subEntries.length} pattern(s)`);
+    item.subEntries.forEach(sub => {
+      lines.push(`;   pattern ${patternIdx}  rel=(${sub.relX},${sub.relY})  ` +
+        `pal=${sub.palette} hflip=${sub.hflip} vflip=${sub.vflip} priority=${sub.priority}  ` +
+        `offset $${off.toString(16)}`);
+      patternIdx++;
+      off += sub.pcgBytes.length;
+    });
+  });
+  const blob = new Blob([lines.join('\n')], {type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'x68k_sprites_report.txt';
+  a.click();
+  setStatus('exportStatus', 'report exported', 'ok');
+}
+
+// X68000 sprite attribute word field positions (same as md_sat_codec.js)
+const EXPORT_SP_PAL_SHIFT = 8;
+const EXPORT_SP_HFLIP = 0x4000;
+const EXPORT_SP_VFLIP = 0x8000;
+const EXPORT_SP_PRI_FRONT = 0x0003;
+const EXPORT_SP_PRI_BACK = 0x0001;
+
+function exportX68kTable() {
+  // Sub-sprite table: one 8-byte entry per pattern (X,Y,attr,priority),
+  // matching SPRITE_TABLE's real layout. X/Y are relative -- apply your
+  // own screen position + the hardware +16 offset at runtime.
+  const subs = allSubEntries();
+  const subTable = new Uint8Array(subs.length * 8);
+  subs.forEach((sub, i) => {
+    let attr = i & 0xFF; // pattern number = this sub-entry's own index into
+                         // the exported PCG data (1:1 with export order)
+    attr |= (sub.palette & 0xF) << EXPORT_SP_PAL_SHIFT;
+    if (sub.hflip) attr |= EXPORT_SP_HFLIP;
+    if (sub.vflip) attr |= EXPORT_SP_VFLIP;
+    const priority = sub.priority ? EXPORT_SP_PRI_FRONT : EXPORT_SP_PRI_BACK;
+    const off = i * 8;
+    subTable[off]   = (sub.relX >> 8) & 0xFF; subTable[off+1] = sub.relX & 0xFF;
+    subTable[off+2] = (sub.relY >> 8) & 0xFF; subTable[off+3] = sub.relY & 0xFF;
+    subTable[off+4] = (attr >> 8) & 0xFF;     subTable[off+5] = attr & 0xFF;
+    subTable[off+6] = (priority >> 8) & 0xFF; subTable[off+7] = priority & 0xFF;
+  });
+  downloadBytes(subTable, 'x68k_sprite_table.bin');
+
+  // Meta table: one 6-byte entry per sheet item (grouped by your own
+  // editable meta ID, not just export order), pointing at its range in
+  // the sub-sprite table above.
+  const metaTable = new Uint8Array(sheet.length * 6);
+  let cursor = 0;
+  sheet.forEach((item, i) => {
+    const off = i * 6;
+    metaTable[off]   = (cursor >> 8) & 0xFF; metaTable[off+1] = cursor & 0xFF;
+    metaTable[off+2] = item.subEntries.length & 0xFF;
+    const widthSprites = Math.max(...item.subEntries.map(s => s.relX)) / 16 + 1;
+    const heightSprites = Math.max(...item.subEntries.map(s => s.relY)) / 16 + 1;
+    metaTable[off+3] = widthSprites & 0xFF;
+    metaTable[off+4] = heightSprites & 0xFF;
+    metaTable[off+5] = item.metaId & 0xFF;
+    cursor += item.subEntries.length;
+  });
+  downloadBytes(metaTable, 'x68k_meta_table.bin');
+
+  setStatus('exportStatus',
+    `exported sprite table (${subs.length} patterns) + meta table (${sheet.length} sprites)`, 'ok');
+}
+
+function exportCompressed() {
+  if (sourceTiles.length === 0) return;
+  const packed = new Uint8Array(sourceTiles.length * TILE_BYTES);
+  sourceTiles.forEach((tile, i) => packed.set(tile, i * TILE_BYTES));
+  try {
+    const compressed = compressTileset(packed, sourceTiles.length);
+    downloadBytes(compressed, 'tileset_compressed.bin');
+    setStatus('exportStatus', `compressed ${sourceTiles.length} tiles -> ${compressed.length} bytes`, 'ok');
+  } catch (err) {
+    setStatus('exportStatus', `compress failed: ${err.message}`, 'err');
+  }
+}
+
+function downloadBytes(bytes, filename) {
+  const blob = new Blob([bytes], {type:'application/octet-stream'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+}
+
+// init
+clearBuilder();
+</script>
+
+</body>
+</html>

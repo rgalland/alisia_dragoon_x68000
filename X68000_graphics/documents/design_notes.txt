@@ -1,0 +1,73 @@
+Data structure:
+src/
+    main.asm
+    video.asm
+    sprites.asm
+    palette.asm
+    dma.asm
+
+include/
+    hardware.inc
+    macros.inc
+    palette.inc
+    sprites.inc
+
+assets/
+    palettes/
+    graphics/
+    maps/
+
+generated/
+    md_palette_lut.inc
+    sonic_sprites.inc
+    bg_tiles.bin
+
+
+Video configuration in Final Fight 384x256 mode
+$E80000 - CRTCON
+R00 - $E80000 = $0045 (HSYNC period)
+R01 - $E80002 = $0007 (HSYNC Pulse width)
+R02 - $E80004 = $000B (H disp start)
+R03 - $E80006 = $003B (H disp end)
+R04 - $E80008 = $0237 (VSYNC period)
+R05 - $E8000A = $0005 (VSYNC Pulse width)
+R06 - $E8000C = $0040 (V disp start)
+R07 - $E8000E = $0200 (V disp end)
+R08 - $E80010 = $001B (External sync H adjust)
+R09 - $E80012 = $003E (Raster number for rster interrupts)
+R10 - $E80014 = $0000 (Text screen X scroll) 
+R11 - $E80016 = $0010 (Text screen Y scroll) 
+R12 - $E80018 = $0000 (GR screen 0 X scroll) 
+R13 - $E8001A = $0010 (GR screen 0 Y scroll) 
+R14 - $E8001C = $0000 (GR screen 1 X scroll) 
+R15 - $E8001E = $0010 (GR screen 1 Y scroll) 
+R16 - $E80020 = $0000 (GR screen 2 X scroll) 
+R17 - $E80022 = $0110 (GR screen 2 Y scroll) 
+R18 - $E80024 = $0000 (GR screen 3 X scroll) 
+R19 - $E80026 = $0110 (GR screen 3 Y scroll) 
+R20 - $E80028 = $0111 (Memory mode/display mode control)
+R21 - $E8002A = $0033 (?)
+R22 - $E8002C = $003F (?)
+R23 - $E8002E = $0000 (?)
+
+$E82000 - VICON
+R0 - $E82400 = $0001 (bit4 - GVRAM size: 0=512x512, 1=1024x1024, bits 1-0 - Colour mode: 00=16 colours, 01=256 colours, 11=65536 colours)
+R1 - $E82500 = $12E1 (bits13-12 - Sprite priority: 0=highest ... 3=lowest, bits11-10 - Text priority, bits9-8 - Graphics priority, bits7-0 - Page priority)
+R2 - $E82600 = $006F (Screen enable: bit7 - border colour en, bit6 - sprite screen en, bit5 - text screen en, bit4 - 1024x1024 mode en, bits3-0 - page3-0 en)
+
+$EB0000 - Cynthia
+$EB0800 = $0060 (BG0 X scroll)
+$EB0802 = $0310 (BG0 Y scroll)
+$EB0804 = $0000 (BG1 X scroll)
+$EB0806 = $0000 (BG1 Y scroll)
+$EB0808 = $0213 (BG/SP control: bit9 - disp en, bit4 - PCG1 en, bit3 - BG1 en,  bit1 - PCG0 en,  bit0 - BG0 en)
+$EB080A = $00FF (H total - timing)
+$EB080C = $000F (H disp pos)
+$EB080E = $0041 (V disp pos)
+$EB0810 = $0011 (Resolution/tile size)  
+
+
+For my sprites to show, I need to have - Mine needs to be $001
+
+
+
